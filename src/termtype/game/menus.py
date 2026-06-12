@@ -5,6 +5,7 @@ PLAN §8.1, §8.3, §8.4, §8.5, §8.7. Manual-smoke verified.
 from __future__ import annotations
 
 import sys
+import textwrap
 import time
 from typing import Any, Callable
 
@@ -197,6 +198,52 @@ def _render_resize_prompt(screen: Screen) -> None:
         pass
 
 
+def _norm_items(items: list[tuple]) -> list[tuple]:
+    """Normalize menu items to uniform (value, label, hotkey, description)."""
+    return [
+        (it[0], it[1],
+         it[2] if len(it) > 2 else None,
+         it[3] if len(it) > 3 else None)
+        for it in items
+    ]
+
+
+def _wrap_desc(text: str, width: int) -> list[str]:
+    """Wrap a description to at most 2 lines, ellipsizing any overflow."""
+    if not text or width < 4:
+        return []
+    return textwrap.wrap(text, width, max_lines=2, placeholder="...")[:2]
+
+
+def _description_box(screen: Screen, text: str, y: int, w: int, ascii_mode: bool) -> None:
+    """Draw a small framed description box centered at row y (4 rows tall)."""
+    if not text:
+        return
+    box_w = min(46, w - 4)
+    if box_w < 8:
+        return
+    content_w = box_w - 4
+    lines = _wrap_desc(text, content_w)
+    if not lines:
+        return
+    while len(lines) < 2:
+        lines.append("")
+
+    x = max(0, (w - box_w) // 2)
+    if ascii_mode:
+        tl = tr = bl = br = "+"; hz, vt = "-", "|"
+    else:
+        tl, tr, bl, br, hz, vt = "┌", "┐", "└", "┘", "─", "│"
+    try:
+        screen.print_at(tl + hz * (box_w - 2) + tr, x, y, colour=8)
+        for i, line in enumerate(lines):
+            screen.print_at(vt + " " + line.ljust(content_w) + " " + vt,
+                            x, y + 1 + i, colour=7)
+        screen.print_at(bl + hz * (box_w - 2) + br, x, y + 3, colour=8)
+    except Exception:
+        pass
+
+
 def list_menu(
     screen: Screen,
     title: str,
@@ -210,11 +257,12 @@ def list_menu(
 ) -> Any:
     """Generic vertical list menu — the shared navigation surface.
 
-    items: list of (value, label) or (value, label, hotkey). Navigate with
-    Up/Down or j/k, select with Enter or a label's hotkey. Esc returns None.
+    items: (value, label[, hotkey[, description]]). Navigate with Up/Down or
+    j/k, select with Enter or a label's hotkey. Esc returns None. A highlighted
+    item with a description shows it in a box below the list (when it fits).
     Renders the below-minimum resize prompt instead of clipping.
     """
-    norm = [(it[0], it[1], (it[2] if len(it) > 2 else None)) for it in items]
+    norm = _norm_items(items)
     if footer is None:
         arrows = "Up/Down" if ascii_mode else "↑↓"
         enter = "Enter" if ascii_mode else "⏎"
@@ -229,15 +277,19 @@ def list_menu(
             time.sleep(0.05)
             continue
 
-        screen.clear()
+        screen.clear_buffer(7, 0, 0)
         _centered_print(screen, title, 1, w, colour=6)
         top = max(3, h // 2 - len(norm) // 2)
-        for i, (_, label, hot) in enumerate(norm):
+        for i, (_, label, hot, _desc) in enumerate(norm):
             marker = "> " if i == selected else "  "
             hint = f" ({hot})" if hot else ""
             _centered_print(screen, f"{marker}{label}{hint}", top + i, w,
                             colour=6 if i == selected else 7,
                             attr=1 if i == selected else 0)
+        desc = norm[selected][3]
+        box_y = top + len(norm) + 1
+        if desc and box_y + 4 <= h - 1:
+            _description_box(screen, desc, box_y, w, ascii_mode)
         _centered_print(screen, footer, h - 1, w, colour=7)
         screen.refresh()
 
@@ -255,7 +307,7 @@ def list_menu(
             elif key == "esc":
                 return None
             else:
-                for value, _, hot in norm:
+                for value, _, hot, _d in norm:
                     if hot and k == hot.lower():
                         _sfx(audio, "menu_select.wav")
                         return value
@@ -383,6 +435,8 @@ def options_screen(
     rows = ["numbers", "accents", "punctuation"]
     labels = {"numbers": "Numbers", "accents": "Accents (à è é)", "punctuation": "Punctuation"}
     hotkeys = {"n": "numbers", "a": "accents", "p": "punctuation"}
+    desc_keys = {"numbers": "desc_opt_numbers", "accents": "desc_opt_accents",
+                 "punctuation": "desc_opt_punctuation"}
     selected = 0
 
     def on(v):
@@ -394,7 +448,7 @@ def options_screen(
         h, w = screen.dimensions
         if h < 24 or w < 80:
             _render_resize_prompt(screen); _poll(screen); time.sleep(0.05); continue
-        screen.clear()
+        screen.clear_buffer(7, 0, 0)
         _centered_print(screen, "Game Options", 1, w, colour=6)
         top = max(3, h // 2 - len(rows) // 2)
         for i, key in enumerate(rows):
@@ -402,6 +456,10 @@ def options_screen(
             line = f"{mark}{on(flags[key])} {labels[key]}"
             _centered_print(screen, line, top + i, w,
                             colour=6 if i == selected else 7, attr=1 if i == selected else 0)
+        box_y = top + len(rows) + 1
+        desc = t(desc_keys[rows[selected]], lang, "")
+        if desc and box_y + 4 <= h - 1:
+            _description_box(screen, desc, box_y, w, ascii_mode)
         legend = ("↑↓ move   Space toggle   ⏎ Start   Esc back" if not ascii_mode
                   else "Up/Down move   Space toggle   Enter Start   Esc back")
         _centered_print(screen, legend, h - 1, w, colour=7)
@@ -439,8 +497,10 @@ def story_difficulty_screen(
 ) -> str | None:
     """Pick the story sub-mode. Returns 'challenge', 'zen', or None on Back."""
     items = [
-        ("challenge", "Challenge  (lives on — recommended)", "c"),
-        ("zen", "Zen  (no fail; drowned words auto-complete)", "z"),
+        ("challenge", "Challenge  (lives on — recommended)", "c",
+         t("desc_story_challenge", lang, "Lives on — miss too many words and the run ends.")),
+        ("zen", "Zen  (no fail; drowned words auto-complete)", "z",
+         t("desc_story_zen", lang, "No fail: drowned words complete themselves.")),
     ]
     return list_menu(screen, "Story Difficulty", items, ascii_mode=ascii_mode, audio=audio)
 
@@ -454,9 +514,11 @@ def story_select_screen(
 ) -> str | None:
     """Pick a story (or the live HN sub-mode). Returns the story name,
     HN_MODE, or None if cancelled."""
-    items: list[tuple] = [(HN_MODE, "Hacker News  (live top stories)", "h")]
+    hn_desc = t("desc_hn", lang, "Type today's top Hacker News headlines, fetched live.")
+    story_desc = t("desc_story_generic", lang, "A public-domain classic, typed in reading order.")
+    items: list[tuple] = [(HN_MODE, "Hacker News  (live top stories)", "h", hn_desc)]
     for name in stories:
-        items.append((name, _prettify_story(name), None))
+        items.append((name, _prettify_story(name), None, story_desc))
     return list_menu(screen, "Choose a Story", items,
                      ascii_mode=ascii_mode, audio=audio)
 

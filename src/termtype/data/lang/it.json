@@ -25,5 +25,22 @@
     "bonus_wave": "ONDA BONUS",
     "level_up": "Livello Su!",
     "clutch_save": "SALVATAGGIO!",
-    "resize_prompt": "Terminale troppo piccolo. Ridimensiona."
+    "resize_prompt": "Terminale troppo piccolo. Ridimensiona.",
+    "menu_credits": "Crediti",
+    "credits_title": "Crediti",
+    "desc_continue": "Riprendi la partita salvata da dove l'avevi lasciata.",
+    "desc_vocab": "Parole infinite che cadono. Scrivile prima che tocchino l'acqua.",
+    "desc_story": "Scrivi un romanzo classico parola per parola, in ordine di lettura.",
+    "desc_stats": "Statistiche, andamenti e badge di questo profilo.",
+    "desc_settings": "Lingua, audio e opzioni di accessibilità.",
+    "desc_switch": "Cambia o crea un profilo giocatore.",
+    "desc_credits": "Chi ha creato il gioco, licenza e attribuzioni.",
+    "desc_quit": "Esci da TermType.",
+    "desc_story_challenge": "Con vite: perdi troppe parole e la partita finisce.",
+    "desc_story_zen": "Senza sconfitta: le parole annegate si completano da sole.",
+    "desc_hn": "Scrivi i titoli di Hacker News di oggi, in diretta.",
+    "desc_story_generic": "Un classico di pubblico dominio, in ordine di lettura.",
+    "desc_opt_numbers": "Includi parole con numeri.",
+    "desc_opt_accents": "Includi parole accentate (à è é).",
+    "desc_opt_punctuation": "Includi la punteggiatura."
 }

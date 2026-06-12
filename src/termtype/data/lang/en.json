@@ -25,5 +25,22 @@
     "bonus_wave": "BONUS WAVE",
     "level_up": "Level Up!",
     "clutch_save": "CLUTCH SAVE!",
-    "resize_prompt": "Terminal too small. Please resize."
+    "resize_prompt": "Terminal too small. Please resize.",
+    "menu_credits": "Credits",
+    "credits_title": "Credits",
+    "desc_continue": "Resume your saved run where you left off.",
+    "desc_vocab": "Endless falling words. Type them before they hit the water.",
+    "desc_story": "Type a classic novel word by word, in reading order.",
+    "desc_stats": "Lifetime stats, trends and badges for this profile.",
+    "desc_settings": "Language, audio and accessibility options.",
+    "desc_switch": "Change or create a player profile.",
+    "desc_credits": "Who made this game, license and attributions.",
+    "desc_quit": "Exit TermType.",
+    "desc_story_challenge": "Lives on — miss too many words and the run ends.",
+    "desc_story_zen": "No fail: drowned words complete themselves.",
+    "desc_hn": "Type today's top Hacker News headlines, fetched live.",
+    "desc_story_generic": "A public-domain classic, typed in reading order.",
+    "desc_opt_numbers": "Include words with numbers.",
+    "desc_opt_accents": "Include accented words (à è é).",
+    "desc_opt_punctuation": "Include punctuation marks."
 }
