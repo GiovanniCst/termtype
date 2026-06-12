@@ -296,9 +296,10 @@ def _process_input(
                         label, word_obj.x, word_obj.row, state.time_played_seconds, tier,
                     )
 
-                    # Golden-clear sparkle (armed by the 'gold' secret word).
+                    # Sparkle juice: a golden burst on a 'gold'-armed clear, or a
+                    # clutch sparkle when a word is killed inside the red zone.
                     # Purely cosmetic — no score/balance change.
-                    if state.golden_next:
+                    if state.golden_next or is_red:
                         state.golden_next = False
                         state.effects.add_sparkle(
                             word_obj.x + len(word_text) / 2.0, word_obj.row,
