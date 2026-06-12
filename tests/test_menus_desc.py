@@ -4,7 +4,22 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from termtype.game.menus import _norm_items, _wrap_desc
+from termtype.game.menus import _RAINBOW, _draw_header, _norm_items, _wrap_desc
+
+
+class _RecScreen:
+    """Minimal recording screen for header-draw assertions."""
+
+    def __init__(self, w=80, h=24):
+        self._w, self._h = w, h
+        self.calls = []  # (text, x, y, colour)
+
+    @property
+    def dimensions(self):
+        return (self._h, self._w)
+
+    def print_at(self, text, x, y, colour=7, attr=0, bg=0):
+        self.calls.append((text, x, y, colour))
 
 _LANG_DIR = Path(__file__).resolve().parents[1] / "src" / "termtype" / "data" / "lang"
 
@@ -48,6 +63,22 @@ def test_wrap_desc_truncates_to_two_lines_with_ellipsis():
     out = _wrap_desc(text, 20)
     assert len(out) == 2
     assert out[-1].endswith("...")
+
+
+def test_header_default_colour_is_cyan():
+    screen = _RecScreen()
+    _draw_header(screen, 80)
+    colours = {c[3] for c in screen.calls if c[0].strip()}
+    assert colours == {6}                       # plain cyan header by default
+
+
+def test_header_rainbow_tick_uses_palette():
+    screen = _RecScreen()
+    _draw_header(screen, 80, rainbow_tick=0)
+    colours = {c[3] for c in screen.calls if c[0].strip()}
+    assert colours                              # something drawn
+    assert colours <= set(_RAINBOW)             # only palette colours
+    assert colours != {6}                       # not the plain header
 
 
 def test_lang_files_have_identical_keys():

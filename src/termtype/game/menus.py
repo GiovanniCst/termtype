@@ -18,7 +18,11 @@ from .progression import available_unlocks
 from .charts import sparkline, bar_chart
 from .renderer import Renderer
 from .title import header_logo
+from .eggs import konami_progress
 from . import levels
+
+# Bright palette for the hidden Konami header-flash easter egg.
+_RAINBOW = (1, 3, 2, 6, 4, 5)
 
 
 def _poll(screen: Screen) -> list[str]:
@@ -34,18 +38,24 @@ def _sfx(audio: Any, name: str, volume: float = 0.7) -> None:
         audio.play_sfx(name, volume=volume)
 
 
-def _draw_header(screen: Screen, w: int, subtitle: str | None = None) -> int:
+def _draw_header(screen: Screen, w: int, subtitle: str | None = None,
+                 rainbow_tick: int | None = None) -> int:
     """Draw the figlet TERMTYPE header (+ optional subtitle) at the top.
 
     Shared chrome for the splash landing, profile select, and the main menu.
-    Returns the first free row below the header.
+    `rainbow_tick` (when set) cycles the logo through a bright palette — used by
+    the hidden Konami easter egg. Returns the first free row below the header.
     """
     logo = header_logo(w)
     block_w = max((len(ln) for ln in logo), default=0)
     x = max(0, (w - block_w) // 2)
     for i, line in enumerate(logo):
+        if rainbow_tick is None:
+            colour = 6
+        else:
+            colour = _RAINBOW[(i + rainbow_tick) % len(_RAINBOW)]
         try:
-            screen.print_at(line, x, i, colour=6, attr=1)
+            screen.print_at(line, x, i, colour=colour, attr=1)
         except Exception:
             pass
     next_row = len(logo)
@@ -144,14 +154,18 @@ def main_menu_screen(
     footer = ("↑↓ move   ⏎ select   Esc quit" if not ascii_mode
               else "Up/Down move   Enter select   Esc quit")
     selected = 0
+    konami: list[str] = []       # rolling buffer for the hidden code
+    rainbow_until = 0.0          # monotonic time the header rainbow-flash ends
 
     while True:
         h, w = screen.dimensions
         if h < 24 or w < 80:
             _render_resize_prompt(screen); _poll(screen); time.sleep(0.05); continue
 
+        now = time.monotonic()
+        tick = int(now * 8) if now < rainbow_until else None
         screen.clear_buffer(7, 0, 0)
-        top = _draw_header(screen, w, subtitle=profile_name) + 1
+        top = _draw_header(screen, w, subtitle=profile_name, rainbow_tick=tick) + 1
         for i, (_, label, hot, _desc) in enumerate(norm):
             marker = "> " if i == selected else "  "
             hint = f" ({hot})" if hot else ""
@@ -167,6 +181,10 @@ def main_menu_screen(
 
         for key in _poll(screen):
             k = key.lower() if len(key) == 1 else key
+            # Hidden Konami code rainbow-flashes the header (cosmetic only).
+            if konami_progress(konami, k):
+                rainbow_until = time.monotonic() + 2.0
+                _sfx(audio, "level_up.wav", volume=0.5)
             if key in ("up", "k"):
                 selected = (selected - 1) % len(norm); _sfx(audio, "menu_move.wav")
             elif key in ("down", "j"):
