@@ -8,6 +8,12 @@ import contextlib
 import os
 from typing import Any
 
+# Mixer buffer in frames. 512 underruns on high-latency backends (notably
+# PulseAudio/PipeWire under WSL), which is heard as crackle/"clipping"; 1024
+# (~23 ms at 44.1 kHz) is gap-free there while keeping keystroke SFX snappy.
+_MIXER_FREQUENCY = 44100
+_MIXER_BUFFER = 1024
+
 
 class NullAudio:
     """No-op audio manager when pygame is unavailable."""
@@ -82,7 +88,7 @@ class AudioManager:
             if retry_env:
                 os.environ["SDL_AUDIODRIVER"] = retry_env
             try:
-                pygame.mixer.init(buffer=512)
+                pygame.mixer.init(frequency=_MIXER_FREQUENCY, buffer=_MIXER_BUFFER)
                 self._mixer = pygame.mixer
                 self._available = True
                 self._sfx_channels = [pygame.mixer.Channel(i) for i in range(4)]
