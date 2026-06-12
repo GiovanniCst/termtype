@@ -27,20 +27,26 @@ Pure-terminal, no GUI. Built on [asciimatics](https://github.com/peterbrittain/a
 
 ## Install
 
-From source (not yet on PyPI):
+From source (not yet on PyPI). A virtual environment keeps it isolated and puts the
+`termtype` command on your PATH:
 
 ```bash
-git clone <repo-url> termtype
+git clone https://github.com/GiovanniCst/termtype.git
 cd termtype
-pip install -e ".[audio]"      # drop [audio] to skip the sound dependency
+python3.11 -m venv .venv
+source .venv/bin/activate          # Windows (PowerShell): .venv\Scripts\Activate.ps1
+pip install -e ".[audio]"          # drop [audio] to skip the sound dependency
 ```
 
 ## Run
+
+With the virtual environment active:
 
 ```bash
 termtype
 ```
 
+If the venv isn't active, run the entry point directly: `./.venv/bin/termtype`.
 Force the no-Unicode renderer if your terminal mangles the visuals:
 
 ```bash
