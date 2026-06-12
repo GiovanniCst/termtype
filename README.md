@@ -36,8 +36,8 @@ From source (not yet on PyPI). A virtual environment keeps it isolated and puts 
 git clone https://github.com/GiovanniCst/termtype.git
 cd termtype
 python3.11 -m venv .venv
-source .venv/bin/activate          # Windows (PowerShell): .venv\Scripts\Activate.ps1
-pip install -e ".[audio]"          # drop [audio] to skip the sound dependency
+source .venv/bin/activate           # on Windows, see "Windows (PowerShell)" below
+pip install -e ".[audio]"           # drop [audio] to skip the sound dependency
 ```
 
 ## Run
@@ -54,6 +54,34 @@ Force the no-Unicode renderer if your terminal mangles the visuals:
 ```bash
 termtype --ascii
 ```
+
+### Windows (PowerShell)
+
+Use a **Windows** Python and a **Windows** venv — a venv created inside WSL won't
+run from PowerShell (its interpreter is a Linux binary, and the layout is
+`.venv\bin\` instead of `.venv\Scripts\`). Calling the venv executables by full
+path avoids the unsigned-script (execution-policy) error you'd otherwise hit on
+`Activate.ps1`:
+
+```powershell
+git clone https://github.com/GiovanniCst/termtype.git
+cd termtype
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[audio]"   # drop [audio] to skip sound
+.\.venv\Scripts\termtype.exe
+```
+
+To activate the venv instead (shorter `termtype` / `pip` commands), allow scripts
+for the current session first — this reverts when you close the window:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+> **Audio tip:** under WSL the sound is routed through a remoting bridge that can
+> crackle under load; running natively on Windows (above) uses the Windows audio
+> stack directly and avoids it.
 
 ## Controls
 
