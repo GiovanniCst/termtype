@@ -33,6 +33,11 @@ STORY_STOPWORD_WEIGHT: float = 0.25
 STORY_PACE_BONUS: int = 25        # base per-sentence pace-chain award
 STORY_PACE_CHAIN_CAP: int = 10    # escalation caps here
 
+# Story-mode side panel (HN skin): max width in columns of the right-hand panel;
+# the playfield gets the rest. engine.play_cols and the renderer divider both read
+# this so they stay in sync.
+STORY_PANEL_COLS: int = 66
+
 # HUD (PLAN §8.3)
 HUD_HEART_GLYPH_MAX: int = 5
 

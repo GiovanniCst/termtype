@@ -18,6 +18,9 @@ class FakeScreen:
     def clear(self):
         pass
 
+    def clear_buffer(self, fg, attr, bg, x=0, y=0, w=None, h=None):
+        pass
+
     def print_at(self, text, x, y, colour=7, attr=0, bg=0):
         self.calls.append((y, x, text, colour))
 

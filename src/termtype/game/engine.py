@@ -147,7 +147,7 @@ def _game_loop(
         h, w = screen.dimensions
         # Reserve the right side for the live HN page when that skin is active
         if state.story_skin == "hn":
-            state.play_cols = max(24, w - min(44, w // 2))
+            state.play_cols = max(24, w - min(levels.STORY_PANEL_COLS, w // 2))
         hud_line = render_hud(
             level=state.level,
             score=state.score,

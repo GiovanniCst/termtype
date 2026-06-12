@@ -85,7 +85,9 @@ class Renderer:
     def render_frame(self, state: GameState, hud_line: str = "") -> None:
         """Render a complete frame including HUD."""
         h, w = self.screen.dimensions
-        self.screen.clear()
+        # Blank the back-buffer only (not a physical clear): refresh() then diffs it
+        # against the displayed frame and writes just the changed cells — no flicker.
+        self.screen.clear_buffer(7, 0, 0)
 
         # Age out transient effects against the game clock
         now = state.time_played_seconds
@@ -187,7 +189,7 @@ class Renderer:
     def _render_hn_panel(self, state: GameState, h: int, w: int) -> None:
         """Render a live 'Hacker News' front page on the right that fills in
         as titles are typed. Styled to resemble news.ycombinator.com."""
-        x0 = state.play_cols or max(24, w - min(44, w // 2))
+        x0 = state.play_cols or max(24, w - min(levels.STORY_PANEL_COLS, w // 2))
         px = x0 + 1                      # content starts after the divider column
         pw = max(10, w - px)             # panel content width
         fancy = self._color_tier == TIER_256
