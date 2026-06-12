@@ -122,6 +122,15 @@ def _game_loop(
         # Clamp dt to avoid spiral of death
         dt = min(dt, 0.1)
 
+        # Report the usable playfield width to the spawner BEFORE advancing, so
+        # even the first spawn spans the whole screen. The HN skin reserves the
+        # right side for the live page; every other mode uses the full width.
+        h, w = screen.dimensions
+        if state.story_skin == "hn":
+            state.play_cols = max(24, w - min(levels.STORY_PANEL_COLS, w // 2))
+        else:
+            state.play_cols = w
+
         # Advance physics
         lives_before = state.lives
         advance(state, dt)
@@ -143,11 +152,7 @@ def _game_loop(
             audio.play_sfx("level_up.wav")
             return
 
-        # Render (HUD included in render_frame)
-        h, w = screen.dimensions
-        # Reserve the right side for the live HN page when that skin is active
-        if state.story_skin == "hn":
-            state.play_cols = max(24, w - min(levels.STORY_PANEL_COLS, w // 2))
+        # Render (HUD included in render_frame); h, w computed above this frame
         hud_line = render_hud(
             level=state.level,
             score=state.score,

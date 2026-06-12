@@ -291,7 +291,7 @@ def _spawn_word(state: GameState) -> None:
     # Reserve margin for lock brackets (+2) and urgency gutter (+2)
     margin = 4
     min_x = margin
-    max_x = 76  # assume 80-col default
+    max_x = 76  # fallback when the engine hasn't reported a width (e.g. tests)
     # Keep words clear of a side panel (e.g. the HN page on the right)
     if state.play_cols:
         max_x = max(min_x + 8, state.play_cols - 4)
