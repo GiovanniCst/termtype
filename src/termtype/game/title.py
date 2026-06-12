@@ -290,7 +290,7 @@ def _draw_stars(screen, stars: list[tuple[int, int, str]], water_row: int) -> No
         if sy >= water_row:
             continue
         try:
-            screen.print_at(glyph, sx, sy, colour=8)
+            screen.print_at(glyph, sx, sy, colour=dim_colour(screen))
         except Exception:
             pass
 
@@ -323,6 +323,16 @@ def _frenzy_fins(elapsed: float, w: int, count: int = 7) -> list[int]:
 def _rainbow_colour(row: int, tick: int) -> int:
     """Cycle the rainbow palette by row + animation tick (frenzy logo flash)."""
     return _RAINBOW[(row + tick) % len(_RAINBOW)]
+
+
+def dim_colour(screen) -> int:
+    """Colour for dim/secondary chrome (grey).
+
+    Palette index 8 ("bright black") needs a 16+ colour terminal; the Windows
+    console backend reports exactly 8 colours (indices 0-7) and KeyErrors on 8.
+    Fall back to white there.
+    """
+    return 8 if getattr(screen, "colours", 8) > 8 else 7
 
 
 def _draw_water(screen, w: int, water_row: int, ascii_mode: bool, flash: bool = False) -> None:
@@ -568,7 +578,7 @@ def credits_screen(screen, lang: dict, *, ascii_mode: bool = False, audio=None) 
         if bonus_revealed:
             tw = (5 if has_color and int(now * 6) % 2 else 6) if has_color else 7
             _centered(screen, BONUS_CREDIT_LINE, h - 2, w, colour=tw)
-        _centered(screen, "Esc back", h - 1, w, colour=8 if has_color else 7)
+        _centered(screen, "Esc back", h - 1, w, colour=dim_colour(screen) if has_color else 7)
         screen.refresh()
 
         for key in _poll(screen):

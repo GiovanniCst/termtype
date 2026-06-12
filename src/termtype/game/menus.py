@@ -17,7 +17,7 @@ from .wordsource import load_lang, t
 from .progression import available_unlocks
 from .charts import sparkline, bar_chart
 from .renderer import Renderer
-from .title import header_logo
+from .title import header_logo, dim_colour
 from .eggs import konami_progress
 from . import levels
 
@@ -60,7 +60,7 @@ def _draw_header(screen: Screen, w: int, subtitle: str | None = None,
             pass
     next_row = len(logo)
     if subtitle:
-        _centered_print(screen, subtitle, next_row, w, colour=8)
+        _centered_print(screen, subtitle, next_row, w, colour=dim_colour(screen))
         next_row += 1
     return next_row
 
@@ -254,11 +254,11 @@ def _description_box(screen: Screen, text: str, y: int, w: int, ascii_mode: bool
     else:
         tl, tr, bl, br, hz, vt = "┌", "┐", "└", "┘", "─", "│"
     try:
-        screen.print_at(tl + hz * (box_w - 2) + tr, x, y, colour=8)
+        screen.print_at(tl + hz * (box_w - 2) + tr, x, y, colour=dim_colour(screen))
         for i, line in enumerate(lines):
             screen.print_at(vt + " " + line.ljust(content_w) + " " + vt,
                             x, y + 1 + i, colour=7)
-        screen.print_at(bl + hz * (box_w - 2) + br, x, y + 3, colour=8)
+        screen.print_at(bl + hz * (box_w - 2) + br, x, y + 3, colour=dim_colour(screen))
     except Exception:
         pass
 
@@ -676,7 +676,7 @@ def settings_screen(
         _centered_print(screen, t("settings_title", lang, "Settings"), 1, w, colour=6)
 
         if not audio_available:
-            _centered_print(screen, "Audio unavailable on this system", 3, w, colour=8)
+            _centered_print(screen, "Audio unavailable on this system", 3, w, colour=dim_colour(screen))
 
         y = 4
         for i, (key, label) in enumerate(settings_rows):
