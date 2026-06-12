@@ -1,5 +1,5 @@
 """Renderer tests via a recording fake screen (no real terminal)."""
-from termtype.game.renderer import Renderer, TIER_256
+from termtype.game.renderer import Renderer, TIER_256, splash_frame
 from termtype.game.state import GameState
 
 
@@ -127,6 +127,55 @@ def test_levelup_banner_renders():
     st.effects.level_up = (5.0, 4)
     r.render_frame(st, hud_line="HUD")
     assert "LEVEL 4" in _texts(screen)
+
+
+# ── splash / sparkle juice ────────────────────────────────────────────────
+
+
+def test_splash_frame_expands_then_expires():
+    assert splash_frame(0.0)                       # something at age 0
+    early = splash_frame(0.05)
+    late = splash_frame(0.4)
+    assert len(late) > len(early)                  # burst widens with age
+    assert splash_frame(0.5) == []                 # expired at TTL
+    assert splash_frame(-1.0) == []                # negative age = nothing
+
+
+def test_splash_frame_symmetric_around_origin():
+    offs = sorted(off for off, _ in splash_frame(0.3))
+    assert offs == sorted(-o for o in offs)        # mirror-symmetric
+
+
+def test_drown_splash_renders_glyphs():
+    screen = FakeScreen()
+    r = _motion_renderer(screen)
+    st = GameState(mode="vocab", water_row=20.0)
+    st.time_played_seconds = 5.0
+    st.effects.add_splash(30.0, 20.0, 5.0)         # fresh splash this frame
+    r.render_frame(st, hud_line="HUD")
+    # Splash droplets ('*') drawn just above the water line in cyan (6)
+    assert any(c[2] == "*" and c[3] == 6 for c in screen.calls)
+
+
+def test_reduced_motion_suppresses_splash():
+    screen = FakeScreen()
+    r = _renderer(screen)                          # reduced_motion=True
+    st = GameState(mode="vocab", water_row=20.0)
+    st.time_played_seconds = 5.0
+    st.effects.add_splash(30.0, 20.0, 5.0)
+    r.render_frame(st, hud_line="HUD")
+    assert all(c[2] != "*" for c in screen.calls)
+
+
+def test_sparkle_renders_for_secret_clear():
+    screen = FakeScreen()
+    r = _motion_renderer(screen)
+    st = GameState(mode="vocab", water_row=20.0)
+    st.time_played_seconds = 5.0
+    st.effects.add_sparkle(30.0, 8.0, 5.0)
+    r.render_frame(st, hud_line="HUD")
+    # A golden twinkle glyph drawn in colour 6 somewhere on the field
+    assert any(c[3] == 6 and c[2] in "✦✧*+x" for c in screen.calls)
 
 
 def test_story_ribbon_shows_progress():

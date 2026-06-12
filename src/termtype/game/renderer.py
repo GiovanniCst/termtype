@@ -44,6 +44,23 @@ COLORS = {
 }
 
 
+def splash_frame(age: float, ttl: float = 0.5) -> list[tuple[int, str]]:
+    """Expanding water-splash burst as (dx, glyph) offsets for a given age.
+
+    Pure so it's unit-testable. Droplets fly outward from the drown point: a
+    tight burst that widens, then thins out as it ages. Empty once expired.
+    """
+    if age < 0 or age >= ttl:
+        return []
+    spread = int(age / ttl * 4) + 1          # 1 → 4 cells out as it ages
+    glyph = "'" if age > ttl * 0.6 else "*"  # droplets thin to flecks late
+    out = [(0, glyph)]
+    for d in range(1, spread + 1):
+        out.append((-d, glyph))
+        out.append((d, glyph))
+    return out
+
+
 class Renderer:
     """Handles all screen rendering."""
 
@@ -132,6 +149,9 @@ class Renderer:
         # Score/combo popups — drawn UNDER words (a word glyph wins a cell)
         self._render_popups(state, w, water_row, dx)
 
+        # Water splashes (drowns) and golden sparkles (secret-word clears)
+        self._render_splashes(state, w, water_row, dx)
+
         # HUD at row 0 (last to render — wins any cell conflicts)
         if hud_line:
             try:
@@ -181,6 +201,47 @@ class Renderer:
                 self.screen.print_at(text, x, row, colour=colour, attr=1)
             except Exception:
                 pass
+
+    def _render_splashes(self, state: GameState, w: int, water_row: int, dx: int) -> None:
+        """Draw water splashes (drowns) and golden sparkles (secret clears).
+
+        Suppressed under reduced motion. ASCII-safe glyphs only. Splash droplets
+        ride just above the water line; sparkles twinkle at the clear point.
+        """
+        if self.reduced_motion:
+            return
+        now = state.time_played_seconds
+        # Drown splashes — blue droplets fanning out along the surface
+        for sx, srow, spawn in state.effects.splashes:
+            age = now - spawn
+            row = int(round(srow)) - 1  # just above the water line
+            cx = int(round(sx)) + dx
+            for off, glyph in splash_frame(age, state.effects.SPLASH_TTL):
+                x = cx + off
+                if 0 <= x < w and 1 <= row < water_row:
+                    try:
+                        self.screen.print_at(glyph, x, row, colour=6, attr=1)
+                    except Exception:
+                        pass
+        # Golden sparkles — bright twinkle where a secret/golden word cleared
+        if self._color_tier == TIER_MONO:
+            return
+        twinkle = "+x*" if self.ascii_mode else "✦✧*"
+        for sx, srow, spawn in state.effects.sparkles:
+            age = now - spawn
+            if age < 0 or age >= state.effects.SPARKLE_TTL:
+                continue
+            row = int(round(srow))
+            cx = int(round(sx)) + dx
+            spread = int(age / state.effects.SPARKLE_TTL * 3) + 1
+            glyph = twinkle[int(now * 20) % len(twinkle)]
+            for off in range(-spread, spread + 1):
+                x = cx + off
+                if 0 <= x < w and 1 <= row < water_row and abs(off) % 2 == spread % 2:
+                    try:
+                        self.screen.print_at(glyph, x, row, colour=6, attr=1)
+                    except Exception:
+                        pass
 
     def _render_fin(self, state: GameState, w: int, water_row: int) -> None:
         """A shark fin patrols the water line — cosmetic menace.

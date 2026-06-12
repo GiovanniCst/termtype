@@ -157,6 +157,11 @@ def advance(state: GameState, dt: float) -> GameState:
     survived: list[FallingWord] = []
     for word in state.words:
         if word.reached_water(state.water_row):
+            # Water-splash juice at the drown column (renderer suppresses it
+            # under reduced motion). Centre roughly under the word.
+            state.effects.add_splash(
+                word.x + len(word.text) / 2.0, state.water_row, state.time_played_seconds,
+            )
             if state.mode == "story":
                 state.pace_chain = 0  # a drowned word breaks the pace chain (§5.2)
             if state.zen:

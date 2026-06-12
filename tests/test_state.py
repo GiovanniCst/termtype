@@ -104,6 +104,17 @@ class TestWaterLineHit:
 
         assert state.combo_count == 0
 
+    def test_drown_emits_water_splash(self):
+        state = make_state(water_row=10.0)
+        state.words.append(make_word("hello", row=9.5, speed=1.0, x=20.0))
+
+        advance(state, 1.0)
+
+        assert len(state.effects.splashes) == 1
+        sx, srow, _ = state.effects.splashes[0]
+        assert srow == 10.0                       # at the water line
+        assert sx == pytest.approx(20.0 + 5 / 2)  # centred under "hello"
+
     def test_combo_preserved_during_bonus_wave(self):
         state = make_state(water_row=10.0)
         state.combo_count = 15

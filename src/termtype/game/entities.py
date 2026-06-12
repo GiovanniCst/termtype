@@ -97,9 +97,15 @@ class Effects:
     combo_break: float | None = None
     # Level-up banner: (start_time, level)
     level_up: tuple[float, int] | None = None
+    # Water splashes when a word drowns: list of (x, row, spawn_time)
+    splashes: list[tuple[float, float, float]] = field(default_factory=list)
+    # Golden sparkle on a secret-word clear: list of (x, row, spawn_time)
+    sparkles: list[tuple[float, float, float]] = field(default_factory=list)
 
     # At most this many popups on screen at once (newest win, §8.1)
     MAX_POPUPS = 3
+    # Splash/sparkle bursts are cheap; cap them so a flurry of drowns is bounded.
+    MAX_SPLASHES = 4
 
     def add_popup(self, text: str, x: float, row: float, now: float, tier: str = "good") -> None:
         """Add a score/combo popup, capping concurrency (newest wins)."""
@@ -107,12 +113,30 @@ class Effects:
         if len(self.popups) > self.MAX_POPUPS:
             self.popups = self.popups[-self.MAX_POPUPS:]
 
+    def add_splash(self, x: float, row: float, now: float) -> None:
+        """Add a water-splash burst where a word just drowned (newest wins)."""
+        self.splashes.append((x, row, now))
+        if len(self.splashes) > self.MAX_SPLASHES:
+            self.splashes = self.splashes[-self.MAX_SPLASHES:]
+
+    def add_sparkle(self, x: float, row: float, now: float) -> None:
+        """Add a golden sparkle burst where a secret/golden word was cleared."""
+        self.sparkles.append((x, row, now))
+        if len(self.sparkles) > self.MAX_SPLASHES:
+            self.sparkles = self.sparkles[-self.MAX_SPLASHES:]
+
+    # How long a splash/sparkle burst stays on screen (its animation length).
+    SPLASH_TTL = 0.5
+    SPARKLE_TTL = 0.6
+
     def clear_expired(self, now: float, popup_ttl: float = 0.6) -> None:
         """Remove expired effects."""
         self.popups = [
             p for p in self.popups
             if now - p[3] < popup_ttl
         ]
+        self.splashes = [s for s in self.splashes if now - s[2] < self.SPLASH_TTL]
+        self.sparkles = [s for s in self.sparkles if now - s[2] < self.SPARKLE_TTL]
         if self.life_loss_flash and now - self.life_loss_flash[0] > self.life_loss_flash[1]:
             self.life_loss_flash = None
         if self.shake and now - self.shake[0] > self.shake[1]:
