@@ -40,6 +40,7 @@ from termtype.game.wordsource import (
 )
 from termtype.game import hn
 from termtype.game.audio import create_audio_manager
+from termtype.game.title import title_splash
 from termtype.game.progression import GamePayload, evaluate_badges
 from termtype.game import levels
 from termtype.game.menus import (
@@ -83,7 +84,7 @@ class App:
         self.ascii_mode = ascii_mode
         self.audio = create_audio_manager()
         self.lang = load_lang("en")
-        self.phase = "profile"
+        self.phase = "title"
         self.profile_id: int | None = None
         self.profile: dict[str, Any] | None = None
         self.config: dict[str, Any] = {}
@@ -95,7 +96,9 @@ class App:
     def run(self, screen: Screen) -> None:
         """Run phases until quit. Re-entered with phase intact after resize."""
         while True:
-            if self.phase == "profile":
+            if self.phase == "title":
+                self._phase_title(screen)
+            elif self.phase == "profile":
                 self._phase_profile(screen)
             elif self.phase == "menu":
                 self._phase_menu(screen)
@@ -106,6 +109,33 @@ class App:
             else:  # "quit"
                 self.audio.stop_music()
                 return
+
+    # ── Title splash ─────────────────────────────────────────────────────
+
+    def _phase_title(self, screen: Screen) -> None:
+        """Arcade attract splash, shown once at launch before the profile flow.
+
+        Music honors the last-active profile's saved preference; a first-ever
+        run (no profile) stays silent so the splash never pre-empts the
+        first-run music opt-in (consent-before-sound).
+        """
+        last_id = get_last_active(self.conn)
+        profile = get_profile(self.conn, last_id) if last_id else None
+        reduced_motion = False
+        if profile:
+            cfg = load_config(self.conn, last_id)
+            self.audio.set_enabled(bool(cfg.get("music_on")), bool(cfg.get("sfx_on", 1)))
+            self.audio.set_music_volume(cfg.get("music_volume", 0.5))
+            self.audio.set_sfx_volume(cfg.get("sfx_volume", 0.7))
+            reduced_motion = bool(cfg.get("reduced_motion", 0))
+            self.lang = load_lang(cfg.get("language", "en"))  # localize the prompt
+            self.audio.play_music(self._mood_track("title"))
+
+        title_splash(
+            screen, self.audio, self.lang,
+            ascii_mode=self.ascii_mode, reduced_motion=reduced_motion,
+        )
+        self.phase = "profile"
 
     # ── Profile ──────────────────────────────────────────────────────────
 
