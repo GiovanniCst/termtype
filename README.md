@@ -7,6 +7,8 @@ Pure-terminal, no GUI. Built on [asciimatics](https://github.com/peterbrittain/a
 
 ## Features
 
+- **Arcade attract screen** — a falling-word title splash drops the logo into the
+  water on any key, with self-explaining menus and an in-game credits crawl.
 - **Arcade mode** — escalating waves, combos, lives, a danger "red zone" near the
   water line, and plateau surges that ramp the pressure the longer you survive.
 - **Story mode** — type your way through public-domain books (English & Italian) in
@@ -88,7 +90,11 @@ the asciimatics rendering layer.
 
 ## Credits & licensing
 
-- **Code** — released under the MIT License (see [LICENSE](LICENSE)).
+In-game credits (author, website, and these attributions) are available from the
+**Credits** entry on the main menu.
+
+- **Code** — © 2026 Giovanni J. Costantini, released under the MIT License (see
+  [LICENSE](LICENSE)).
 - **Story texts** — public-domain works (e.g. *Pride and Prejudice*, *Alice in
   Wonderland*, *Pinocchio*), included as plain prose.
 - **Audio** — CC0 / public-domain assets; see
