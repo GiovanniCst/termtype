@@ -331,3 +331,23 @@ class TestZenMode:
         advance(state, 1.0)
         assert state.lives == 2
         assert state.story_words_done == 0
+
+
+class TestSpawnWithinPlayfield:
+    def test_long_words_fit_inside_play_cols(self):
+        # Regression: long words must not overrun the HN side panel / right edge.
+        state = make_state(word_pool=["congratulations", "extraordinary", "internationalization"])
+        state.play_cols = 66  # HN-mode playfield width
+        for _ in range(200):
+            advance(state, 0.1)
+            for w in state.words:
+                # whole word + right lock bracket stays inside the playfield
+                assert w.x + len(w.text) + 1 <= state.play_cols, (w.text, w.x)
+
+    def test_full_width_words_stay_on_screen(self):
+        state = make_state(word_pool=["internationalization", "counterproductive"])
+        state.play_cols = 80
+        for _ in range(200):
+            advance(state, 0.1)
+            for w in state.words:
+                assert w.x + len(w.text) + 1 <= 80, (w.text, w.x)

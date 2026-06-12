@@ -287,14 +287,14 @@ def _spawn_word(state: GameState) -> None:
     if state.bonus_wave_active:
         speed *= 0.5
 
-    # X position: pick one that doesn't overlap with words near the top
-    # Reserve margin for lock brackets (+2) and urgency gutter (+2)
+    # X position: keep the WHOLE word (plus its lock brackets ">word<") inside
+    # the playfield. play_cols is the usable width — it already excludes any side
+    # panel such as the HN page — so subtracting the word length here is what
+    # stops long words from being truncated by the panel or the right edge.
     margin = 4
     min_x = margin
-    max_x = 76  # fallback when the engine hasn't reported a width (e.g. tests)
-    # Keep words clear of a side panel (e.g. the HN page on the right)
-    if state.play_cols:
-        max_x = max(min_x + 8, state.play_cols - 4)
+    right_limit = state.play_cols if state.play_cols else 80
+    max_x = max(min_x, right_limit - len(word_text) - 2)
 
     # Find X positions of words near the top (row < 4)
     top_word_xs = [
