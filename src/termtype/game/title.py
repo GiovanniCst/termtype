@@ -168,6 +168,11 @@ def crawl_visible(lines: list[str], offset: float, height: int) -> list[tuple[st
     return out
 
 
+def crawl_done(offset: float, total: int, height: int) -> bool:
+    """True once the last crawl line (index total-1) has risen past the top."""
+    return height - int(offset) + (total - 1) < 0
+
+
 # ── Screen-driven splash (not unit-tested; render + IO) ──────────────────
 
 FRAME_BUDGET = 1.0 / 30.0
@@ -354,3 +359,65 @@ def _render_below_min(screen) -> None:
     """Shared below-minimum resize prompt (lazy import dodges a menus cycle)."""
     from .menus import _render_resize_prompt
     _render_resize_prompt(screen)
+
+
+# ── Credits crawl ────────────────────────────────────────────────────────
+
+CRAWL_SPEED = 2.0     # rows per second
+CREDITS_HOLD = 1.0    # seconds held after the last line clears the top
+
+# Highlighted (title / personal-brand) lines.
+_CREDITS_ACCENT = {"TERMTYPE", "Giovanni J. Costantini", "https://costantini.pw"}
+
+
+def credits_screen(screen, lang: dict, *, ascii_mode: bool = False, audio=None) -> None:
+    """Star-Wars-style upward credits crawl. Any key (or end + hold) returns.
+
+    Music is left untouched (the title track keeps playing). Resize unwinds via
+    ResizeScreenError back to the menu phase.
+    """
+    has_color = bool(getattr(screen, "colours", 0)) and screen.colours >= 8
+    total = len(CREDITS_LINES)
+    offset = 0.0
+    last = time.monotonic()
+    done_at: float | None = None
+
+    while True:
+        frame_start = time.monotonic()
+        h, w = screen.dimensions
+        if h < MIN_H or w < MIN_W:
+            _render_below_min(screen)
+            _poll(screen)
+            time.sleep(0.05)
+            last = time.monotonic()
+            continue
+
+        now = time.monotonic()
+        dt = min(now - last, 0.1)
+        last = now
+        offset += CRAWL_SPEED * dt
+
+        screen.clear_buffer(7, 0, 0)
+        for text, y in crawl_visible(CREDITS_LINES, offset, h):
+            if not has_color:
+                colour = 7
+            elif y <= 1 or y >= h - 2:
+                colour = 8                       # edge fade
+            elif text in _CREDITS_ACCENT:
+                colour = 6
+            else:
+                colour = 7
+            _centered(screen, text, y, w, colour=colour)
+        _centered(screen, "Esc back", h - 1, w, colour=8 if has_color else 7)
+        screen.refresh()
+
+        if _poll(screen):
+            return
+
+        # When the final line has risen past the top, hold briefly then return.
+        if crawl_done(offset, total, h):
+            if done_at is None:
+                done_at = now
+            elif now - done_at >= CREDITS_HOLD:
+                return
+        _pace(frame_start)

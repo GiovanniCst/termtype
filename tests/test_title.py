@@ -10,6 +10,7 @@ from termtype.game.title import (
     CREDITS_LINES,
     MAX_BACKDROP_WORDS,
     Backdrop,
+    crawl_done,
     crawl_visible,
     header_logo,
     logo_drop_row,
@@ -102,6 +103,16 @@ def test_crawl_skips_blank_lines():
     vis = crawl_visible(["x", "", "y"], 5.0, 10)
     texts = [t for t, _ in vis]
     assert "" not in texts
+
+
+def test_crawl_done_boundary():
+    total, h = 18, 24
+    # not done while content is still on/below the top edge
+    assert not crawl_done(0.0, total, h)
+    assert not crawl_done(float(h + total - 1), total, h)  # last line at y=0
+    # done once the last line has risen above the top
+    assert crawl_done(float(h + total), total, h)
+    assert crawl_done(9999.0, total, h)
 
 
 # ── logos ────────────────────────────────────────────────────────────────

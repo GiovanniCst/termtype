@@ -40,7 +40,7 @@ from termtype.game.wordsource import (
 )
 from termtype.game import hn
 from termtype.game.audio import create_audio_manager
-from termtype.game.title import title_splash
+from termtype.game.title import title_splash, credits_screen
 from termtype.game.progression import GamePayload, evaluate_badges
 from termtype.game import levels
 from termtype.game.menus import (
@@ -245,6 +245,10 @@ class App:
         elif action == "story":
             if self._build_story_game(screen):
                 self.phase = "game"
+        elif action == "credits":
+            credits_screen(
+                screen, self.lang, ascii_mode=self.ascii_mode, audio=self.audio,
+            )
         elif action == "stats":
             stats_page_screen(
                 screen,
