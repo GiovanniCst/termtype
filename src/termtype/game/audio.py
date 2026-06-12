@@ -77,6 +77,11 @@ class AudioManager:
         # Set SDL env vars before importing pygame (PLAN §8.7)
         os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+        # WSLg's RDP audio transport crackles when SFX start with SDL's default
+        # Pulse latency; the mix itself is clean (verified via RDPSink.monitor).
+        # 60 ms target latency is the documented fix; setdefault keeps it
+        # user-overridable.
+        os.environ.setdefault("PULSE_LATENCY_MSEC", "60")
 
         try:
             import pygame
