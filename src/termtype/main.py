@@ -50,6 +50,37 @@ from termtype.game.menus import (
 )
 
 
+def _clamp_colour(c: Any, palette: int) -> Any:
+    """Map a colour index the terminal can't display to white.
+
+    Out-of-palette indices are the failure mode, not a value to preserve: the
+    Windows console exposes only 0-7 and KeyErrors at refresh() on anything
+    higher, and white is always legible. Gray/bright-black (8) included.
+    """
+    return c if c is None or c < palette else 7
+
+
+def _install_colour_guard(screen: Screen) -> None:
+    """Clamp every print_at colour to the screen's palette.
+
+    A belt-and-suspenders boundary: rather than auditing dozens of call sites
+    for stray high colour indices (8 = gray, 244/202 = 256-palette HN chrome),
+    fix it once where pixels meet the terminal. No-op on full 256-colour
+    terminals, so the dev box is unaffected. Re-installed per screen (resize
+    rebuilds it), which is why it lives at the top of App.run.
+    """
+    palette = getattr(screen, "colours", 256) or 256
+    if palette >= 256:
+        return
+    original = screen.print_at
+
+    def guarded(text, x, y, colour=7, attr=0, bg=0, **kwargs):
+        return original(text, x, y, colour=_clamp_colour(colour, palette),
+                        attr=attr, bg=_clamp_colour(bg, palette), **kwargs)
+
+    screen.print_at = guarded
+
+
 def main() -> int:
     """Main entry point."""
     # Detect ASCII mode
@@ -95,6 +126,7 @@ class App:
 
     def run(self, screen: Screen) -> None:
         """Run phases until quit. Re-entered with phase intact after resize."""
+        _install_colour_guard(screen)
         while True:
             if self.phase == "title":
                 self._phase_title(screen)

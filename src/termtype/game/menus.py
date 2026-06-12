@@ -100,7 +100,7 @@ def profile_select_screen(
             marker = ">" if i == selected else " "
             name = profile["display_name"]
             screen.print_at(f"{marker} {name}", 2, list_top + i,
-                            colour=7 if i == selected else 8)
+                            colour=7 if i == selected else dim_colour(screen))
         _centered_print(screen, "[N] New  [Enter] Select  [Esc] Back", h - 1, w, colour=7)
         screen.refresh()
 
@@ -681,7 +681,7 @@ def settings_screen(
         y = 4
         for i, (key, label) in enumerate(settings_rows):
             marker = ">" if i == selected else " "
-            colour = 7 if i == selected else 8
+            colour = 7 if i == selected else dim_colour(screen)
             screen.print_at(f"{marker} {label}", 2, y, colour=colour)
             y += 1
 
