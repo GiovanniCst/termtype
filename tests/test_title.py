@@ -138,6 +138,33 @@ def test_logo_plain_fallback_on_tiny_width():
 # ── license consistency ──────────────────────────────────────────────────
 
 
+def test_word_colour_gradient():
+    from termtype.game.title import _word_colour
+    assert _word_colour(0.0, 20) == 6      # freshly spawned (cool)
+    assert _word_colour(19.9, 20) == 1     # at the water (hot)
+    bands = {_word_colour(float(r), 20) for r in range(0, 20)}
+    assert bands <= {6, 5, 3, 1}
+
+
+def test_step_fin_stays_in_bounds():
+    from termtype.game.entities import step_fin
+    rng = random.Random(3)
+    x, d = 5.0, 1
+    for _ in range(1000):
+        x, d = step_fin(x, d, 1 / 30.0, 80, rng)
+        assert 1.0 <= x <= 78.0
+        assert d in (1, -1)
+
+
+def test_step_fin_bounces_at_edges():
+    from termtype.game.entities import step_fin
+    rng = random.Random(0)
+    x, d = step_fin(0.5, -1, 0.1, 40, rng)   # past the left edge
+    assert x == 1.0 and d == 1
+    x, d = step_fin(39.0, 1, 0.1, 40, rng)   # past the right edge (width-2 = 38)
+    assert x == 38.0 and d == -1
+
+
 def test_credits_copyright_matches_license_file():
     license_path = Path(__file__).resolve().parents[1] / "LICENSE"
     text = license_path.read_text(encoding="utf-8")

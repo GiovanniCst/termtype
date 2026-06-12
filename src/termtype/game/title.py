@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 
 from asciimatics.exceptions import ResizeScreenError
 
-from .entities import FallingWord
+from .entities import FallingWord, step_fin
 from .input_handler import drain_events
 from .wordsource import load_vocab, t
 
@@ -209,15 +209,59 @@ def _draw_block(screen, lines: list[str], top: int, w: int, colour: int,
             pass
 
 
+def _word_colour(row: float, water_row: int) -> int:
+    """Colour a falling word by how close it is to drowning (cool → hot)."""
+    frac = row / max(1.0, water_row)
+    if frac < 0.40:
+        return 6   # cyan — just spawned
+    if frac < 0.70:
+        return 5   # magenta
+    if frac < 0.88:
+        return 3   # yellow — getting close
+    return 1       # red — about to drown
+
+
 def _draw_backdrop(screen, bd: "Backdrop", water_row: int) -> None:
     for word in bd.words:
         row = int(round(word.row))
         if row < 0 or row >= water_row:
             continue
         try:
-            screen.print_at(word.text, int(round(word.x)), row, colour=8)
+            screen.print_at(word.text, int(round(word.x)), row,
+                            colour=_word_colour(word.row, water_row))
         except Exception:
             pass
+
+
+def _make_stars(w: int, h: int, rng: random.Random, ascii_mode: bool) -> list[tuple[int, int, str]]:
+    """Generate a sparse starfield (above the water line)."""
+    glyphs = [".", ",", "`"] if ascii_mode else [".", ",", "`", "·"]
+    stars = []
+    for _ in range(max(1, (w * h) // 90)):
+        x = rng.randint(0, w - 1)
+        y = rng.randint(1, max(1, h - 3))
+        stars.append((x, y, rng.choice(glyphs)))
+    return stars
+
+
+def _draw_stars(screen, stars: list[tuple[int, int, str]], water_row: int) -> None:
+    for sx, sy, glyph in stars:
+        if sy >= water_row:
+            continue
+        try:
+            screen.print_at(glyph, sx, sy, colour=8)
+        except Exception:
+            pass
+
+
+def _draw_fin(screen, fx: int, water_row: int, w: int, ascii_mode: bool) -> None:
+    if not (0 <= fx < w):
+        return
+    glyph = "^" if ascii_mode else "▲"
+    try:
+        screen.print_at(glyph, fx, water_row, colour=7, attr=1)
+    except Exception:
+        pass
 
 
 def _draw_water(screen, w: int, water_row: int, ascii_mode: bool, flash: bool = False) -> None:
@@ -246,7 +290,10 @@ def title_splash(screen, audio, lang: dict, *, ascii_mode: bool = False,
     rng = random.Random()
     bd = Backdrop()
     logo: list[str] = []
+    stars: list[tuple[int, int, str]] = []
     logo_w = -1
+    fin_x: float | None = None
+    fin_dir = 1
     start = time.monotonic()
     last = start
 
@@ -267,12 +314,18 @@ def title_splash(screen, audio, lang: dict, *, ascii_mode: bool = False,
         water_row = h - 2
         if w != logo_w:
             logo, logo_w = splash_logo(w), w
+            stars = _make_stars(w, h, rng, ascii_mode)
+        if fin_x is None:
+            fin_x = rng.uniform(2, w - 3)
 
         step_backdrop(bd, pool, dt, w, water_row, rng)
+        fin_x, fin_dir = step_fin(fin_x, fin_dir, dt, w, rng)
 
         screen.clear_buffer(7, 0, 0)
+        _draw_stars(screen, stars, water_row)
         _draw_backdrop(screen, bd, water_row)
         _draw_water(screen, w, water_row, ascii_mode)
+        _draw_fin(screen, int(round(fin_x)), water_row, w, ascii_mode)
         if int(elapsed * 2) % 2 == 0:  # ~1 Hz blink
             _centered(screen, prompt, h - 1, w, colour=7)
         _draw_block(screen, logo, h // 2 - len(logo) // 2, w, colour=6)
@@ -282,7 +335,7 @@ def title_splash(screen, audio, lang: dict, *, ascii_mode: bool = False,
             break
         _pace(frame_start)
 
-    _splash_drop(screen, audio, bd, logo, ascii_mode)
+    _splash_drop(screen, audio, bd, logo, ascii_mode, stars)
 
 
 def _splash_static(screen, prompt: str, ascii_mode: bool) -> None:
@@ -304,7 +357,8 @@ def _splash_static(screen, prompt: str, ascii_mode: bool) -> None:
         time.sleep(0.05)
 
 
-def _splash_drop(screen, audio, bd: "Backdrop", logo: list[str], ascii_mode: bool) -> None:
+def _splash_drop(screen, audio, bd: "Backdrop", logo: list[str], ascii_mode: bool,
+                 stars: list[tuple[int, int, str]]) -> None:
     """Logo falls into the water with gravity, then a thud + red flash beat."""
     h, w = screen.dimensions
     water_row = h - 2
@@ -321,6 +375,7 @@ def _splash_drop(screen, audio, bd: "Backdrop", logo: list[str], ascii_mode: boo
         top = logo_drop_row(t_frac, start_top, target_top)
 
         screen.clear_buffer(7, 0, 0)
+        _draw_stars(screen, stars, water_row)
         _draw_backdrop(screen, bd, water_row)
         _draw_water(screen, w, water_row, ascii_mode)
         _draw_block(screen, logo, top, w, colour=6, clip_at=water_row)
@@ -340,6 +395,7 @@ def _splash_drop(screen, audio, bd: "Backdrop", logo: list[str], ascii_mode: boo
             drain_events(screen)
             raise ResizeScreenError("resized", None)
         screen.clear_buffer(7, 0, 0)
+        _draw_stars(screen, stars, water_row)
         _draw_backdrop(screen, bd, water_row)
         _draw_water(screen, w, water_row, ascii_mode, flash=True)
         _draw_block(screen, logo, target_top, w, colour=6, clip_at=water_row)
