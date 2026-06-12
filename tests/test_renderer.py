@@ -189,6 +189,40 @@ def test_fin_frenzy_draws_a_school():
     assert len(fins) >= 5                           # a school, not a lone fin
 
 
+def test_shark_cameo_renders_when_active():
+    screen = FakeScreen()
+    r = _motion_renderer(screen)
+    st = GameState(mode="vocab", water_row=20.0, play_cols=80)
+    st.time_played_seconds = 5.0
+    r._cameo_start = 5.0          # leap mid-flight
+    r._cameo_dir = 1
+    # Mid-arc sample
+    st.time_played_seconds = 5.0 + r._CAMEO_DUR / 2
+    r.render_frame(st, hud_line="HUD")
+    glyphs = "".join(c[2] for c in screen.calls)
+    assert "=" in glyphs and ">" in glyphs        # ASCII shark body drawn
+
+
+def test_shark_cameo_clears_after_duration():
+    screen = FakeScreen()
+    r = _motion_renderer(screen)
+    st = GameState(mode="vocab", water_row=20.0, play_cols=80)
+    r._cameo_start = 1.0
+    st.time_played_seconds = 1.0 + r._CAMEO_DUR + 0.1   # past the end
+    r.render_frame(st, hud_line="HUD")
+    assert r._cameo_start is None                  # leap finished, state cleared
+
+
+def test_shark_cameo_suppressed_under_reduced_motion():
+    screen = FakeScreen()
+    r = _renderer(screen)                          # reduced_motion=True
+    st = GameState(mode="vocab", water_row=20.0, play_cols=80)
+    r._cameo_start = 5.0
+    st.time_played_seconds = 5.3
+    r.render_frame(st, hud_line="HUD")
+    assert "=^" not in "".join(c[2] for c in screen.calls)
+
+
 def test_story_ribbon_shows_progress():
     screen = FakeScreen()
     r = _renderer(screen)

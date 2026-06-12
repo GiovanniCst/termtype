@@ -12,7 +12,7 @@ from typing import Any
 from asciimatics.screen import Screen
 
 from .entities import FallingWord, step_fin
-from .eggs import frenzy_fin_xs
+from .eggs import cameo_due, frenzy_fin_xs, shark_arc_row
 from .state import GameState
 from . import levels
 
@@ -82,6 +82,11 @@ class Renderer:
         self._fin_dir = 1
         self._last_fin_t = 0.0
 
+        # Rare "shark leaps over the words" cameo (easter egg)
+        self._cameo_rng = random.Random()
+        self._cameo_start: float | None = None   # game-clock time the leap began
+        self._cameo_dir = 1                       # +1 left→right, -1 right→left
+
     def _detect_color_tier(self) -> int:
         """Detect the color tier based on terminal capabilities."""
         if os.environ.get("NO_COLOR") or os.environ.get("TERM") == "dumb":
@@ -137,6 +142,9 @@ class Renderer:
 
         # Shark fin slicing along the surface
         self._render_fin(state, w, water_row)
+
+        # Rare shark-leap cameo arcing over the playfield (easter egg)
+        self._render_cameo(state, w, water_row)
 
         # Starfield (rendered before HUD so HUD overwrites any stars on row 0)
         if not self.reduced_motion:
@@ -281,6 +289,47 @@ class Renderer:
                 self.screen.print_at(glyph, fx, water_row, colour=7, attr=1)
             except Exception:
                 pass
+
+    # How long a shark-leap cameo takes to arc across the playfield.
+    _CAMEO_DUR = 1.1
+
+    def _render_cameo(self, state: GameState, w: int, water_row: int) -> None:
+        """A shark rarely leaps in an arc over the falling words (easter egg).
+
+        Suppressed under reduced motion. Starts on a rare per-frame roll, then
+        glides edge-to-edge following a parabola. Purely cosmetic.
+        """
+        if self.reduced_motion:
+            return
+        now = state.time_played_seconds
+        play_w = int(state.play_cols) if state.play_cols else w
+        play_w = max(8, min(play_w, w))
+
+        # Maybe begin a new leap (rare); never overlap an in-flight one.
+        if self._cameo_start is None and cameo_due(self._cameo_rng):
+            self._cameo_start = now
+            self._cameo_dir = self._cameo_rng.choice((1, -1))
+
+        if self._cameo_start is None:
+            return
+        t = (now - self._cameo_start) / self._CAMEO_DUR
+        if t >= 1.0:
+            self._cameo_start = None
+            return
+
+        # Horizontal sweep across the playfield, vertical parabola above water.
+        frac = t if self._cameo_dir == 1 else (1.0 - t)
+        x = int(2 + frac * (play_w - 4))
+        row = shark_arc_row(t, 1, water_row, peak=max(4, water_row // 3))
+        # Simple ASCII-art shark so glyph widths stay 1 cell on every terminal.
+        shark = ">=^>" if self._cameo_dir == 1 else "<^=<"
+        for i, ch in enumerate(shark):
+            cx = x + (i if self._cameo_dir == 1 else -i)
+            if 0 <= cx < w and 1 <= row < water_row:
+                try:
+                    self.screen.print_at(ch, cx, row, colour=7, attr=1)
+                except Exception:
+                    pass
 
     def _render_levelup_banner(self, state: GameState, h: int, w: int) -> None:
         """Centered level-up banner for a brief beat after each level-up."""
