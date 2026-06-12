@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "termtype"
+version = "0.1.0"
+description = "A terminal typing game where words fall like Space Invaders"
+requires-python = ">=3.11"
+dependencies = [
+    "asciimatics==1.15.0",
+    "pyfiglet>=1.0",
+    "pywin32>=305; sys_platform == 'win32'",
+]
+
+[project.scripts]
+termtype = "termtype.main:main"
+
+[project.optional-dependencies]
+audio = ["pygame-ce>=2.5,<2.6"]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+termtype = ["data/**/*"]

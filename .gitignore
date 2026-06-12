@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Local tooling / editor
+.claude/
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Resolved roadblock notes — kept out of the repo
+archived/
+
+# Throwaway de-risking spikes (local only)
+spikes/
+
+# Internal planning / working docs — kept local, not for the public repo
+DEV_TERM_TYPE_PLAN.md
+QUIRKS.md
+SHORTCUTS_AUDIT.md
+SPIKE_FINDINGS.md
+TERM_TYPE_PLAN.md

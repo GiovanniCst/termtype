@@ -1,0 +1,1 @@
+"""TermType — terminal typing game."""

@@ -1,0 +1,139 @@
+"""Renderer tests via a recording fake screen (no real terminal)."""
+from termtype.game.renderer import Renderer, TIER_256
+from termtype.game.state import GameState
+
+
+class FakeScreen:
+    A_REVERSE = 0
+
+    def __init__(self, w=110, h=30, colours=256):
+        self._w, self._h = w, h
+        self.colours = colours
+        self.calls = []  # (y, x, text)
+
+    @property
+    def dimensions(self):
+        return (self._h, self._w)
+
+    def clear(self):
+        pass
+
+    def print_at(self, text, x, y, colour=7, attr=0, bg=0):
+        self.calls.append((y, x, text, colour))
+
+    def refresh(self):
+        pass
+
+
+def _texts(screen):
+    return "\n".join(c[2] for c in screen.calls)
+
+
+def _colours_of(screen, text):
+    return [c[3] for c in screen.calls if c[2] == text]
+
+
+def _renderer(screen):
+    r = Renderer(screen, reduced_motion=True)
+    r._color_tier = TIER_256
+    return r
+
+
+def test_hn_panel_renders_header_footer_and_revealed_title():
+    screen = FakeScreen()
+    r = _renderer(screen)
+    state = GameState(
+        mode="story", story_skin="hn", play_cols=66,
+        story_words=["alpha", "beta", "gamma", "delta"],
+        sentence_ends={1, 3},                       # title0 ends @1, title1 ends @3
+        story_display_lines=["Alpha Beta Headline", "Gamma Delta Headline"],
+        story_words_done=2,                          # title0 fully typed, title1 not
+    )
+    r.render_frame(state, hud_line="HUD")
+    out = _texts(screen)
+    assert "Hacker News" in out          # orange header wordmark
+    assert "guidelines" in out           # footer nav
+    assert "Alpha Beta Headline" in out  # revealed (typed) title
+    assert "Gamma Delta Headline" not in out  # not yet typed -> hidden
+
+
+def test_hn_panel_hides_all_titles_before_any_typed():
+    screen = FakeScreen()
+    r = _renderer(screen)
+    state = GameState(
+        mode="story", story_skin="hn", play_cols=66,
+        story_words=["alpha", "beta"], sentence_ends={1},
+        story_display_lines=["Alpha Beta Headline"], story_words_done=0,
+    )
+    r.render_frame(state, hud_line="HUD")
+    out = _texts(screen)
+    assert "Hacker News" in out
+    assert "Alpha Beta Headline" not in out  # nothing typed yet
+
+
+def _motion_renderer(screen):
+    r = Renderer(screen, reduced_motion=False)  # popups need motion on
+    r._color_tier = TIER_256
+    r._stars = []                                # drop the random starfield
+    return r
+
+
+def test_score_popup_renders_and_expires():
+    screen = FakeScreen()
+    r = _motion_renderer(screen)
+    st = GameState(mode="vocab", water_row=20.0)
+    st.time_played_seconds = 5.0
+    st.effects.add_popup("+50", 10, 8, 5.0, "fast")
+    r.render_frame(st, hud_line="HUD")
+    assert "+50" in _texts(screen)
+
+    # An old popup (beyond TTL) is cleared and not drawn
+    screen2 = FakeScreen()
+    r2 = _motion_renderer(screen2)
+    st2 = GameState(mode="vocab", water_row=20.0)
+    st2.time_played_seconds = 10.0
+    st2.effects.add_popup("+99", 10, 8, 5.0, "fast")  # 5s old
+    r2.render_frame(st2, hud_line="HUD")
+    assert "+99" not in _texts(screen2)
+
+
+def test_first_game_highlights_first_letter():
+    from termtype.game.entities import FallingWord
+    # First game: the word's first letter is drawn in the highlight colour (3)
+    screen = FakeScreen()
+    r = _renderer(screen)
+    st = GameState(mode="vocab", water_row=20.0, is_first_game=True)
+    st.words.append(FallingWord(text="hello", x=10, row=5, speed=1))
+    r.render_frame(st, hud_line="HUD")
+    assert 3 in _colours_of(screen, "h")  # leading 'h' highlighted
+
+    # Returning player: no highlight on the first letter
+    screen2 = FakeScreen()
+    r2 = _renderer(screen2)
+    st2 = GameState(mode="vocab", water_row=20.0, is_first_game=False)
+    st2.words.append(FallingWord(text="hello", x=10, row=5, speed=1))
+    r2.render_frame(st2, hud_line="HUD")
+    assert 3 not in _colours_of(screen2, "h")
+
+
+def test_levelup_banner_renders():
+    screen = FakeScreen()
+    r = _renderer(screen)
+    st = GameState(mode="vocab", water_row=20.0)
+    st.time_played_seconds = 5.0
+    st.effects.level_up = (5.0, 4)
+    r.render_frame(st, hud_line="HUD")
+    assert "LEVEL 4" in _texts(screen)
+
+
+def test_story_ribbon_shows_progress():
+    screen = FakeScreen()
+    r = _renderer(screen)
+    state = GameState(
+        mode="story", story_words=["alpha", "beta", "gamma"],
+        sentence_ends={2}, story_words_done=2,
+    )
+    r.render_frame(state, hud_line="HUD")
+    out = _texts(screen)
+    assert "[2/3]" in out                # progress counter
+    assert "alpha beta" in out           # assembled-so-far ribbon
