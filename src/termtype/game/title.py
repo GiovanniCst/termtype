@@ -119,12 +119,25 @@ def logo_drop_row(t: float, start_row: int, water_row: int) -> int:
 
 MAX_BACKDROP_WORDS = 10
 
+# Bright per-word colours (skip 0 black, 7 white, 8 grey) so the words read as
+# confetti rather than one flat colour.
+_WORD_PALETTE = (1, 2, 3, 4, 5, 6)
+
+# Fake-points gag: when two words collide one is "destroyed" for joke points.
+POPUP_TTL = 0.8
+_FAKE_POINTS = ("+100", "+250", "+500", "+1000", "+5000", "+9001!", "+9999!")
+
 
 @dataclass
 class Backdrop:
     """Ambient falling-word state for the splash. Decorative only."""
     words: list[FallingWord] = field(default_factory=list)
     spawn_in: float = 0.0
+    popups: list[list] = field(default_factory=list)  # [text, x, row, age]
+
+
+def _x_overlap(a: FallingWord, b: FallingWord) -> bool:
+    return a.x < b.x + len(b.text) and b.x < a.x + len(a.text)
 
 
 def step_backdrop(
@@ -135,17 +148,48 @@ def step_backdrop(
     water_row: int,
     rng: random.Random,
 ) -> None:
-    """Advance the backdrop one frame: maybe spawn, fall, drown at the water."""
+    """Advance the backdrop one frame: spawn, fall, collide, drown.
+
+    Each word gets a random colour and a widely varied speed, so faster words
+    catch slower ones; a collision destroys one word for joke "points".
+    """
     bd.spawn_in -= dt
     if bd.spawn_in <= 0 and len(bd.words) < MAX_BACKDROP_WORDS and pool:
         text = rng.choice(pool)
         x = rng.uniform(0, max(0, width - len(text)))
-        bd.words.append(FallingWord(text=text, x=x, row=0.0, speed=rng.uniform(0.6, 1.4)))
+        bd.words.append(FallingWord(
+            text=text, x=x, row=0.0,
+            speed=rng.uniform(0.5, 2.6),          # wide spread → visible variety
+            colour=rng.choice(_WORD_PALETTE),
+        ))
         bd.spawn_in = rng.uniform(0.5, 0.9)
 
     for w in bd.words:
         w.advance(dt)
-    # Words that reach the water line drown — exactly like gameplay.
+
+    # Collisions: a faster word overtaking a slower one in the same cells
+    # destroys one and pops fake points where they met.
+    destroyed: set[int] = set()
+    for i in range(len(bd.words)):
+        if i in destroyed:
+            continue
+        a = bd.words[i]
+        for j in range(i + 1, len(bd.words)):
+            if j in destroyed:
+                continue
+            b = bd.words[j]
+            if abs(a.row - b.row) < 1.0 and _x_overlap(a, b):
+                destroyed.add(j)
+                bd.popups.append([rng.choice(_FAKE_POINTS),
+                                  max(a.x, b.x), min(a.row, b.row), 0.0])
+                break
+    if destroyed:
+        bd.words = [w for k, w in enumerate(bd.words) if k not in destroyed]
+
+    # Age popups, then drown anything past the water line.
+    for p in bd.popups:
+        p[3] += dt
+    bd.popups[:] = [p for p in bd.popups if p[3] < POPUP_TTL]
     bd.words[:] = [w for w in bd.words if w.row < water_row]
 
 
@@ -210,26 +254,22 @@ def _draw_block(screen, lines: list[str], top: int, w: int, colour: int,
             pass
 
 
-def _word_colour(row: float, water_row: int) -> int:
-    """Colour a falling word by how close it is to drowning (cool → hot)."""
-    frac = row / max(1.0, water_row)
-    if frac < 0.40:
-        return 6   # cyan — just spawned
-    if frac < 0.70:
-        return 5   # magenta
-    if frac < 0.88:
-        return 3   # yellow — getting close
-    return 1       # red — about to drown
-
-
 def _draw_backdrop(screen, bd: "Backdrop", water_row: int) -> None:
     for word in bd.words:
         row = int(round(word.row))
         if row < 0 or row >= water_row:
             continue
         try:
-            screen.print_at(word.text, int(round(word.x)), row,
-                            colour=_word_colour(word.row, water_row))
+            screen.print_at(word.text, int(round(word.x)), row, colour=word.colour)
+        except Exception:
+            pass
+    # Fake-points popups drift up and fade as they age.
+    for text, px, prow, age in bd.popups:
+        ry = int(round(prow)) - int(age / 0.18)
+        if ry < 0 or ry >= water_row:
+            continue
+        try:
+            screen.print_at(text, int(round(px)), ry, colour=3, attr=1)
         except Exception:
             pass
 

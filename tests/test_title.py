@@ -138,12 +138,45 @@ def test_logo_plain_fallback_on_tiny_width():
 # ── license consistency ──────────────────────────────────────────────────
 
 
-def test_word_colour_gradient():
-    from termtype.game.title import _word_colour
-    assert _word_colour(0.0, 20) == 6      # freshly spawned (cool)
-    assert _word_colour(19.9, 20) == 1     # at the water (hot)
-    bands = {_word_colour(float(r), 20) for r in range(0, 20)}
-    assert bands <= {6, 5, 3, 1}
+def test_backdrop_words_get_varied_colours():
+    from termtype.game.title import _WORD_PALETTE
+    rng = random.Random(11)
+    pool = ["alpha", "beta", "gamma", "delta", "omega", "parola", "ciao"]
+    bd = Backdrop()
+    colours, speeds = set(), set()
+    for _ in range(400):
+        step_backdrop(bd, pool, 1 / 30.0, 80, 22, rng)
+        for w in bd.words:
+            assert w.colour in _WORD_PALETTE
+            colours.add(w.colour)
+            speeds.add(round(w.speed, 2))
+    assert len(colours) >= 3       # confetti, not one flat colour
+    assert max(speeds) - min(speeds) > 0.8   # speeds genuinely vary
+
+
+def test_backdrop_collision_destroys_one_and_pops_points():
+    from termtype.game.entities import FallingWord
+    from termtype.game.title import _FAKE_POINTS
+    rng = random.Random(0)
+    bd = Backdrop(spawn_in=999.0)  # suppress spawning
+    # Two words sharing a column, a hair apart → collide on the next step.
+    bd.words.append(FallingWord(text="aaaa", x=10.0, row=5.0, speed=1.0))
+    bd.words.append(FallingWord(text="bbbb", x=11.0, row=5.2, speed=1.0))
+    step_backdrop(bd, ["x"], 1 / 30.0, 80, 22, rng)
+    assert len(bd.words) == 1               # one destroyed
+    assert len(bd.popups) == 1
+    assert bd.popups[0][0] in _FAKE_POINTS   # fake points text
+
+
+def test_backdrop_popups_expire():
+    from termtype.game.title import POPUP_TTL
+    rng = random.Random(0)
+    bd = Backdrop(spawn_in=999.0)
+    bd.popups.append(["+9001!", 5.0, 4.0, 0.0])
+    steps = int(POPUP_TTL / (1 / 30.0)) + 2
+    for _ in range(steps):
+        step_backdrop(bd, ["x"], 1 / 30.0, 80, 22, rng)
+    assert bd.popups == []
 
 
 def test_step_fin_stays_in_bounds():

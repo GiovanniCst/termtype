@@ -31,6 +31,7 @@ class FallingWord:
     error_count: int = 0
     lock_time: float | None = None
     spawn_time: float = 0.0
+    colour: int = 7  # render colour; gameplay ignores it, the title splash sets it
 
     @property
     def is_complete(self) -> bool:
