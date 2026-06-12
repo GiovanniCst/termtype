@@ -5,12 +5,13 @@ PLAN §8.1, §8.2, §8.9. Reads GameState, writes to Screen.
 from __future__ import annotations
 
 import os
+import random
 import unicodedata
 from typing import Any
 
 from asciimatics.screen import Screen
 
-from .entities import FallingWord
+from .entities import FallingWord, step_fin
 from .state import GameState
 from . import levels
 
@@ -56,6 +57,12 @@ class Renderer:
         self._stars: list[tuple[int, int, str]] = []
         if not reduced_motion:
             self._init_starfield()
+
+        # Shark fin patrolling the water line (cosmetic juice)
+        self._fin_rng = random.Random()
+        self._fin_x: float | None = None
+        self._fin_dir = 1
+        self._last_fin_t = 0.0
 
     def _detect_color_tier(self) -> int:
         """Detect the color tier based on terminal capabilities."""
@@ -109,6 +116,9 @@ class Renderer:
                                  colour=1 if flash else 4, attr=1 if flash else 0)
         except Exception:
             pass
+
+        # Shark fin slicing along the surface
+        self._render_fin(state, w, water_row)
 
         # Starfield (rendered before HUD so HUD overwrites any stars on row 0)
         if not self.reduced_motion:
@@ -169,6 +179,32 @@ class Renderer:
             colour = self._POPUP_COLORS.get(tier, 7)
             try:
                 self.screen.print_at(text, x, row, colour=colour, attr=1)
+            except Exception:
+                pass
+
+    def _render_fin(self, state: GameState, w: int, water_row: int) -> None:
+        """A shark fin patrols the water line — cosmetic menace.
+
+        Suppressed under reduced motion. Patrols within the playfield so it
+        never strays under a side panel (e.g. the HN page).
+        """
+        if self.reduced_motion:
+            return
+        play_w = int(state.play_cols) if state.play_cols else w
+        play_w = max(6, min(play_w, w))
+        if self._fin_x is None:
+            self._fin_x = self._fin_rng.uniform(2, play_w - 3)
+        now = state.time_played_seconds
+        dt = min(max(0.0, now - self._last_fin_t), 0.1)
+        self._last_fin_t = now
+        self._fin_x, self._fin_dir = step_fin(
+            self._fin_x, self._fin_dir, dt, play_w, self._fin_rng,
+        )
+        glyph = "^" if self.ascii_mode else "▲"
+        fx = int(round(self._fin_x))
+        if 0 <= fx < w:
+            try:
+                self.screen.print_at(glyph, fx, water_row, colour=7, attr=1)
             except Exception:
                 pass
 

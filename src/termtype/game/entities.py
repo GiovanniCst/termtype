@@ -51,6 +51,23 @@ class FallingWord:
         return self.row >= water_row
 
 
+def step_fin(x: float, direction: int, dt: float, width: int, rng,
+             speed: float = 9.0, turn_per_sec: float = 0.5) -> tuple[float, int]:
+    """Advance a shark fin patrolling the water line. Pure; rng injected.
+
+    Moves horizontally, bounces off the edges, and randomly reverses now and
+    then. Returns the new (x, direction). Cosmetic only — no gameplay effect.
+    """
+    x += direction * speed * dt
+    if x <= 1:
+        return 1.0, 1
+    if x >= width - 2:
+        return float(width - 2), -1
+    if rng.random() < turn_per_sec * dt:
+        direction = -direction
+    return x, direction
+
+
 @dataclass
 class WaterLine:
     """The water line at the bottom of the play area.
