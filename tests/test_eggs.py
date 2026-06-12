@@ -9,6 +9,7 @@ from termtype.game.eggs import (
     cameo_due,
     feed_secret,
     frenzy_fin_xs,
+    konami_in_progress,
     konami_progress,
     shark_arc_row,
 )
@@ -46,6 +47,30 @@ def test_konami_wrong_key_midway_resets_suffix():
         konami_progress(buf, tok)
     assert konami_progress(buf, "z") is False  # wrong final key
     assert konami_progress(buf, "a") is False  # 'a' alone no longer completes
+
+
+def test_konami_in_progress_detects_partial_run():
+    buf: list[str] = []
+    assert konami_in_progress(buf) is False        # empty buffer
+    konami_progress(buf, "up")
+    assert konami_in_progress(buf) is True          # 'up' starts the code
+    konami_progress(buf, "up")
+    konami_progress(buf, "down")
+    assert konami_in_progress(buf) is True          # still on track
+
+
+def test_konami_in_progress_false_off_track():
+    buf: list[str] = []
+    for tok in ("x", "y", "z"):
+        konami_progress(buf, tok)
+    assert konami_in_progress(buf) is False         # nothing matches a prefix
+
+
+def test_konami_in_progress_false_when_complete():
+    buf: list[str] = []
+    for tok in KONAMI_SEQUENCE:
+        konami_progress(buf, tok)
+    assert konami_in_progress(buf) is False         # full code is not "in progress"
 
 
 # ── feed_secret ──────────────────────────────────────────────────────────

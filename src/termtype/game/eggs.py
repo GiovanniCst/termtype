@@ -33,6 +33,19 @@ def konami_progress(buffer: list[str], token: str) -> bool:
     return tuple(buffer) == KONAMI_SEQUENCE
 
 
+def konami_in_progress(buffer: list[str]) -> bool:
+    """True if the buffer's tail is a non-empty proper prefix of the code.
+
+    Lets callers swallow keys only while a code is genuinely mid-entry, so a
+    stray arrow/'b'/'a' with no run behind it still behaves normally.
+    """
+    for start in range(len(buffer)):
+        tail = tuple(buffer[start:])
+        if tail and tail != KONAMI_SEQUENCE and KONAMI_SEQUENCE[:len(tail)] == tail:
+            return True
+    return False
+
+
 def feed_secret(buffer: str, ch: str, max_len: int = 8) -> tuple[str, str | None]:
     """Accumulate typed letters and detect a completed secret word.
 

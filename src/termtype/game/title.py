@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from asciimatics.exceptions import ResizeScreenError
 
 from .entities import FallingWord, step_fin
-from .eggs import konami_progress
+from .eggs import konami_in_progress, konami_progress
 from .input_handler import drain_events
 from .wordsource import load_vocab, t
 
@@ -267,10 +267,6 @@ def _draw_fin(screen, fx: int, water_row: int, w: int, ascii_mode: bool) -> None
 
 # ── Konami easter egg: a frenzy of fins sweeps the surface ────────────────
 
-# Keys that are part of the hidden code — they don't dismiss the splash, so a
-# player entering the code mid-stream isn't kicked out before completing it.
-_KONAMI_KEYS = frozenset({"up", "down", "left", "right", "b", "a"})
-
 # Rotating bright palette for the rainbow logo flash during the frenzy.
 _RAINBOW = (1, 3, 2, 6, 4, 5)
 
@@ -370,14 +366,14 @@ def title_splash(screen, audio, lang: dict, *, ascii_mode: bool = False,
             _draw_block(screen, logo, logo_top, w, colour=6)
         screen.refresh()
 
-        # Drain input. A key that advances/completes the hidden code is
-        # swallowed (and may light the frenzy); any other key exits the splash.
+        # Drain input. A key that completes or is mid-way through the hidden
+        # code is swallowed; any other key dismisses the splash as before.
         exit_splash = False
         for key in _poll(screen):
             if konami_progress(konami, key):
-                frenzy_until = time.monotonic() + 2.5
-            elif key not in _KONAMI_KEYS:
-                exit_splash = True
+                frenzy_until = time.monotonic() + 2.5     # code complete
+            elif not konami_in_progress(konami):
+                exit_splash = True                        # not mid-code → exit
         if exit_splash and now >= frenzy_until:
             break
         _pace(frame_start)
