@@ -472,6 +472,22 @@ CREDITS_HOLD = 1.0    # seconds held after the last line clears the top
 # Highlighted (title / personal-brand) lines.
 _CREDITS_ACCENT = {"TERMTYPE", "Giovanni J. Costantini", "https://costantini.pw"}
 
+# Secret key that reveals a hidden bonus credit line (gated, never on the
+# required-lines path). 'f' for the patrolling fin. Everything else exits.
+_CREDITS_SECRET_KEY = "f"
+BONUS_CREDIT_LINE = "~ thanks for swimming with the sharks ~"
+
+
+def credits_key_action(key: str) -> str:
+    """Classify a credits keystroke: 'reveal' the bonus line, or 'exit'.
+
+    Pure so it's unit-testable. The secret key toggles the hidden line without
+    leaving the crawl; any other key returns to the menu (as before).
+    """
+    if len(key) == 1 and key.lower() == _CREDITS_SECRET_KEY:
+        return "reveal"
+    return "exit"
+
 
 def credits_screen(screen, lang: dict, *, ascii_mode: bool = False, audio=None) -> None:
     """Star-Wars-style upward credits crawl. Any key (or end + hold) returns.
@@ -484,6 +500,7 @@ def credits_screen(screen, lang: dict, *, ascii_mode: bool = False, audio=None) 
     offset = 0.0
     last = time.monotonic()
     done_at: float | None = None
+    bonus_revealed = False        # secret-key easter egg (hidden bonus line)
 
     while True:
         frame_start = time.monotonic()
@@ -511,11 +528,18 @@ def credits_screen(screen, lang: dict, *, ascii_mode: bool = False, audio=None) 
             else:
                 colour = 7
             _centered(screen, text, y, w, colour=colour)
+        # Hidden bonus line (secret-key egg): twinkles just above the footer.
+        if bonus_revealed:
+            tw = (5 if has_color and int(now * 6) % 2 else 6) if has_color else 7
+            _centered(screen, BONUS_CREDIT_LINE, h - 2, w, colour=tw)
         _centered(screen, "Esc back", h - 1, w, colour=8 if has_color else 7)
         screen.refresh()
 
-        if _poll(screen):
-            return
+        for key in _poll(screen):
+            if credits_key_action(key) == "reveal":
+                bonus_revealed = True  # toggle on; stay in the crawl
+            else:
+                return                 # any other key exits as before
 
         # When the final line has risen past the top, hold briefly then return.
         if crawl_done(offset, total, h):

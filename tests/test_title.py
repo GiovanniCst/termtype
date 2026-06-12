@@ -165,6 +165,27 @@ def test_step_fin_bounces_at_edges():
     assert x == 38.0 and d == -1
 
 
+# ── credits secret-key egg ────────────────────────────────────────────────
+
+
+def test_credits_secret_key_reveals_bonus():
+    from termtype.game.title import credits_key_action
+    assert credits_key_action("f") == "reveal"
+    assert credits_key_action("F") == "reveal"   # case-insensitive
+
+
+def test_credits_other_keys_exit():
+    from termtype.game.title import credits_key_action
+    for key in ("enter", "esc", "a", "up", "space"):
+        assert credits_key_action(key) == "exit"
+
+
+def test_bonus_credit_line_is_not_a_required_line():
+    # The hidden bonus line must never live in the required crawl content.
+    from termtype.game.title import BONUS_CREDIT_LINE, CREDITS_LINES
+    assert BONUS_CREDIT_LINE not in CREDITS_LINES
+
+
 # ── Konami frenzy helpers ─────────────────────────────────────────────────
 
 
