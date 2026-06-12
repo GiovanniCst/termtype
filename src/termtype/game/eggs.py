@@ -61,6 +61,17 @@ def cameo_due(rng, chance: float = 0.0006) -> bool:
     return rng.random() < chance
 
 
+def frenzy_fin_xs(elapsed: float, width: int, count: int = 7, speed: float = 26.0) -> list[int]:
+    """X positions of a school of fins sweeping across the surface.
+
+    Evenly spaced and wrapping around the width. Pure/deterministic for tests;
+    shared by the title splash and the in-game shark-frenzy egg.
+    """
+    span = max(1, width)
+    head = (elapsed * speed) % span
+    return [int((head + i * (span / count)) % span) for i in range(count)]
+
+
 def shark_arc_row(t: float, top_row: int, water_row: int, peak: int = 6) -> int:
     """Parabolic height of a leaping shark over the playfield.
 

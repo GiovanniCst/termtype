@@ -178,6 +178,17 @@ def test_sparkle_renders_for_secret_clear():
     assert any(c[3] == 6 and c[2] in "✦✧*+x" for c in screen.calls)
 
 
+def test_fin_frenzy_draws_a_school():
+    screen = FakeScreen()
+    r = _motion_renderer(screen)
+    st = GameState(mode="vocab", water_row=20.0, play_cols=80)
+    st.time_played_seconds = 5.0
+    st.fin_frenzy_until = 7.0                       # frenzy active now
+    r.render_frame(st, hud_line="HUD")
+    fins = [c for c in screen.calls if c[2] == "▲"]
+    assert len(fins) >= 5                           # a school, not a lone fin
+
+
 def test_story_ribbon_shows_progress():
     screen = FakeScreen()
     r = _renderer(screen)

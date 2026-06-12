@@ -112,6 +112,11 @@ class GameState:
     # Timed against time_played_seconds so the renderer needs no separate clock.
     effects: Effects = field(default_factory=Effects)
 
+    # Hidden easter-egg state (purely cosmetic — never touches scoring/balance):
+    secret_buffer: str = ""            # rolling typed-letter buffer (secret words)
+    fin_frenzy_until: float = 0.0      # game-clock time a fin frenzy ends
+    golden_next: bool = False          # next cleared word sparkles golden
+
     # Word lock state
     locked_word_index: int | None = None  # index into self.words
 

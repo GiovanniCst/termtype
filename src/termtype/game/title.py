@@ -276,13 +276,12 @@ _RAINBOW = (1, 3, 2, 6, 4, 5)
 
 
 def _frenzy_fins(elapsed: float, w: int, count: int = 7) -> list[int]:
-    """X positions of a school of fins sweeping right across the surface.
+    """X positions of a school of fins sweeping across the surface (Konami egg).
 
-    Evenly spaced, wrapping around the width — pure so it's trivially testable.
+    Thin wrapper over the shared eggs.frenzy_fin_xs helper.
     """
-    span = max(1, w)
-    head = (elapsed * 26.0) % span  # lead fin position
-    return [int((head + i * (span / count)) % span) for i in range(count)]
+    from .eggs import frenzy_fin_xs
+    return frenzy_fin_xs(elapsed, w, count)
 
 
 def _rainbow_colour(row: int, tick: int) -> int:

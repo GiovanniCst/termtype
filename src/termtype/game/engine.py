@@ -14,6 +14,7 @@ from asciimatics.exceptions import ResizeScreenError
 from .state import GameState, advance
 from .input_handler import drain_events
 from .word_matcher import process_keystroke
+from .eggs import feed_secret
 from .scoring import (
     word_score, story_word_score, pace_chain_bonus, chapter_fluency_score,
     update_combo, update_peak_score_rate,
@@ -190,6 +191,10 @@ def _process_input(
     if state.paused:
         return
 
+    # Secret-word observer (cosmetic only): watches the raw key stream in
+    # parallel with the matcher, never altering locks/scoring (§ easter eggs).
+    _observe_secret(state, key, audio)
+
     result = process_keystroke(
         state, key,
         hard_lock=hard_lock,
@@ -291,6 +296,15 @@ def _process_input(
                         label, word_obj.x, word_obj.row, state.time_played_seconds, tier,
                     )
 
+                    # Golden-clear sparkle (armed by the 'gold' secret word).
+                    # Purely cosmetic — no score/balance change.
+                    if state.golden_next:
+                        state.golden_next = False
+                        state.effects.add_sparkle(
+                            word_obj.x + len(word_text) / 2.0, word_obj.row,
+                            state.time_played_seconds,
+                        )
+
                     # Update combo
                     combo_before = state.combo_count
                     state.combo_count, state.combo_shield, state.combo_typo_window = update_combo(
@@ -321,6 +335,23 @@ def _process_input(
             state.total_keystrokes,
             is_typo=True,
         )
+
+
+def _observe_secret(state: GameState, key: str, audio: Any) -> None:
+    """Feed the raw key into the hidden secret-word detector and arm payoffs.
+
+    Cosmetic only — sets cosmetic flags; never spawns words, scores, or touches
+    the matcher. A boundary key (space/enter/etc.) just resets the run.
+    """
+    state.secret_buffer, effect = feed_secret(state.secret_buffer, key)
+    if effect == "frenzy":
+        # A school of fins lunges across the surface for a couple of seconds.
+        state.fin_frenzy_until = state.time_played_seconds + 2.5
+        audio.play_sfx("clutch.wav", volume=0.5)
+    elif effect == "goldrush":
+        # The next cleared word sparkles golden (no scoring change).
+        state.golden_next = True
+        audio.play_sfx("combo.wav", volume=0.5)
 
 
 def _calc_wpm(state: GameState) -> float:

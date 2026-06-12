@@ -12,6 +12,7 @@ from typing import Any
 from asciimatics.screen import Screen
 
 from .entities import FallingWord, step_fin
+from .eggs import frenzy_fin_xs
 from .state import GameState
 from . import levels
 
@@ -262,6 +263,18 @@ class Renderer:
             self._fin_x, self._fin_dir, dt, play_w, self._fin_rng,
         )
         glyph = "^" if self.ascii_mode else "▲"
+
+        # Shark-frenzy egg: a school of fins sweeps past for a couple of seconds
+        # (armed by the 'shark'/'kraken' secret word). Cosmetic only.
+        if now < state.fin_frenzy_until:
+            for sx in frenzy_fin_xs(now, play_w):
+                if 0 <= sx < w:
+                    try:
+                        self.screen.print_at(glyph, sx, water_row, colour=7, attr=1)
+                    except Exception:
+                        pass
+            return
+
         fx = int(round(self._fin_x))
         if 0 <= fx < w:
             try:

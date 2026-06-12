@@ -8,6 +8,7 @@ from termtype.game.eggs import (
     SECRET_WORDS,
     cameo_due,
     feed_secret,
+    frenzy_fin_xs,
     konami_progress,
     shark_arc_row,
 )
@@ -106,6 +107,23 @@ def test_cameo_due_deterministic_with_seed():
     a = [cameo_due(random.Random(7), 0.5) for _ in range(20)]
     b = [cameo_due(random.Random(7), 0.5) for _ in range(20)]
     assert a == b
+
+
+# ── frenzy_fin_xs ────────────────────────────────────────────────────────
+
+
+def test_frenzy_fin_xs_count_and_bounds():
+    xs = frenzy_fin_xs(2.0, 80, count=7)
+    assert len(xs) == 7
+    assert all(0 <= x < 80 for x in xs)
+
+
+def test_frenzy_fin_xs_sweeps_and_wraps():
+    span = 100
+    a = frenzy_fin_xs(0.0, span)[0]
+    b = frenzy_fin_xs(0.2, span)[0]
+    assert b > a                                 # advances over time
+    assert all(0 <= x < span for x in frenzy_fin_xs(999.0, span))  # wraps cleanly
 
 
 # ── shark_arc_row ────────────────────────────────────────────────────────
