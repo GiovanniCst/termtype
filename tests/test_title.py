@@ -165,6 +165,32 @@ def test_step_fin_bounces_at_edges():
     assert x == 38.0 and d == -1
 
 
+# ── Konami frenzy helpers ─────────────────────────────────────────────────
+
+
+def test_frenzy_fins_count_and_bounds():
+    from termtype.game.title import _frenzy_fins
+    fins = _frenzy_fins(1.3, 80, count=7)
+    assert len(fins) == 7
+    assert all(0 <= fx < 80 for fx in fins)
+
+
+def test_frenzy_fins_sweep_over_time():
+    from termtype.game.title import _frenzy_fins
+    # The lead fin advances as elapsed grows (before wrap-around).
+    a = _frenzy_fins(0.0, 200)[0]
+    b = _frenzy_fins(0.1, 200)[0]
+    assert b > a
+
+
+def test_rainbow_colour_cycles_palette():
+    from termtype.game.title import _rainbow_colour, _RAINBOW
+    seen = {_rainbow_colour(r, 0) for r in range(len(_RAINBOW))}
+    assert seen == set(_RAINBOW)
+    # Shifting the tick rotates the colour for a given row.
+    assert _rainbow_colour(0, 0) != _rainbow_colour(0, 1)
+
+
 def test_credits_copyright_matches_license_file():
     license_path = Path(__file__).resolve().parents[1] / "LICENSE"
     text = license_path.read_text(encoding="utf-8")

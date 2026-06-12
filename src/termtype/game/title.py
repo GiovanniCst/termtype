@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from asciimatics.exceptions import ResizeScreenError
 
 from .entities import FallingWord, step_fin
+from .eggs import konami_progress
 from .input_handler import drain_events
 from .wordsource import load_vocab, t
 
@@ -264,6 +265,31 @@ def _draw_fin(screen, fx: int, water_row: int, w: int, ascii_mode: bool) -> None
         pass
 
 
+# ── Konami easter egg: a frenzy of fins sweeps the surface ────────────────
+
+# Keys that are part of the hidden code — they don't dismiss the splash, so a
+# player entering the code mid-stream isn't kicked out before completing it.
+_KONAMI_KEYS = frozenset({"up", "down", "left", "right", "b", "a"})
+
+# Rotating bright palette for the rainbow logo flash during the frenzy.
+_RAINBOW = (1, 3, 2, 6, 4, 5)
+
+
+def _frenzy_fins(elapsed: float, w: int, count: int = 7) -> list[int]:
+    """X positions of a school of fins sweeping right across the surface.
+
+    Evenly spaced, wrapping around the width — pure so it's trivially testable.
+    """
+    span = max(1, w)
+    head = (elapsed * 26.0) % span  # lead fin position
+    return [int((head + i * (span / count)) % span) for i in range(count)]
+
+
+def _rainbow_colour(row: int, tick: int) -> int:
+    """Cycle the rainbow palette by row + animation tick (frenzy logo flash)."""
+    return _RAINBOW[(row + tick) % len(_RAINBOW)]
+
+
 def _draw_water(screen, w: int, water_row: int, ascii_mode: bool, flash: bool = False) -> None:
     ch = "~" if ascii_mode else "≈"
     try:
@@ -294,6 +320,8 @@ def title_splash(screen, audio, lang: dict, *, ascii_mode: bool = False,
     logo_w = -1
     fin_x: float | None = None
     fin_dir = 1
+    konami: list[str] = []        # rolling buffer for the hidden code
+    frenzy_until = 0.0            # monotonic time the fin frenzy ends
     start = time.monotonic()
     last = start
 
@@ -320,18 +348,38 @@ def title_splash(screen, audio, lang: dict, *, ascii_mode: bool = False,
 
         step_backdrop(bd, pool, dt, w, water_row, rng)
         fin_x, fin_dir = step_fin(fin_x, fin_dir, dt, w, rng)
+        frenzy = now < frenzy_until
 
         screen.clear_buffer(7, 0, 0)
         _draw_stars(screen, stars, water_row)
         _draw_backdrop(screen, bd, water_row)
         _draw_water(screen, w, water_row, ascii_mode)
-        _draw_fin(screen, int(round(fin_x)), water_row, w, ascii_mode)
+        if frenzy:
+            for fx in _frenzy_fins(elapsed, w):
+                _draw_fin(screen, fx, water_row, w, ascii_mode)
+        else:
+            _draw_fin(screen, int(round(fin_x)), water_row, w, ascii_mode)
         if int(elapsed * 2) % 2 == 0:  # ~1 Hz blink
             _centered(screen, prompt, h - 1, w, colour=7)
-        _draw_block(screen, logo, h // 2 - len(logo) // 2, w, colour=6)
+        logo_top = h // 2 - len(logo) // 2
+        if frenzy:  # rainbow flash on the logo while the school sweeps past
+            tick = int(elapsed * 12)
+            for i, line in enumerate(logo):
+                _draw_block(screen, [line], logo_top + i, w,
+                            colour=_rainbow_colour(i, tick))
+        else:
+            _draw_block(screen, logo, logo_top, w, colour=6)
         screen.refresh()
 
-        if _poll(screen):
+        # Drain input. A key that advances/completes the hidden code is
+        # swallowed (and may light the frenzy); any other key exits the splash.
+        exit_splash = False
+        for key in _poll(screen):
+            if konami_progress(konami, key):
+                frenzy_until = time.monotonic() + 2.5
+            elif key not in _KONAMI_KEYS:
+                exit_splash = True
+        if exit_splash and now >= frenzy_until:
             break
         _pace(frame_start)
 
