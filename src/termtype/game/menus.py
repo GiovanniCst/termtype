@@ -17,13 +17,8 @@ from .wordsource import load_lang, t
 from .progression import available_unlocks
 from .charts import sparkline, bar_chart
 from .renderer import Renderer
+from .title import header_logo
 from . import levels
-
-try:
-    import pyfiglet
-    HAS_PYFIGLET = True
-except ImportError:
-    HAS_PYFIGLET = False
 
 
 def _poll(screen: Screen) -> list[str]:
@@ -39,58 +34,25 @@ def _sfx(audio: Any, name: str, volume: float = 0.7) -> None:
         audio.play_sfx(name, volume=volume)
 
 
-def title_screen(
-    screen: Screen,
-    lang: dict[str, str],
-    ascii_mode: bool = False,
-) -> str:
-    """Show title screen. Returns the selected action."""
-    h, w = screen.dimensions
-    screen.clear()
+def _draw_header(screen: Screen, w: int, subtitle: str | None = None) -> int:
+    """Draw the figlet TERMTYPE header (+ optional subtitle) at the top.
 
-    # ASCII logo
-    if HAS_PYFIGLET and w >= 72 and h >= 12:
+    Shared chrome for the splash landing, profile select, and the main menu.
+    Returns the first free row below the header.
+    """
+    logo = header_logo(w)
+    block_w = max((len(ln) for ln in logo), default=0)
+    x = max(0, (w - block_w) // 2)
+    for i, line in enumerate(logo):
         try:
-            fig = pyfiglet.Figlet(font="small", width=w)
-            logo = fig.renderText("TermType")
-            lines = logo.split("\n")[:8]
-            for i, line in enumerate(lines):
-                x = max(0, (w - len(line)) // 2)
-                screen.print_at(line, x, i + 1, colour=6)
+            screen.print_at(line, x, i, colour=6, attr=1)
         except Exception:
-            _centered_print(screen, "TermType", 2, w, colour=6)
-    else:
-        _centered_print(screen, "TermType", 2, w, colour=6)
-
-    # Menu options
-    options = [
-        ("P", t("menu_play", lang, "Play")),
-        ("S", t("menu_settings", lang, "Settings")),
-        ("L", t("menu_stats", lang, "Stats")),
-        ("Q", t("menu_quit", lang, "Quit")),
-    ]
-
-    y = h // 2
-    for key, label in options:
-        _centered_print(screen, f"[{key}] {label}", y, w, colour=7)
-        y += 1
-
-    # Legend
-    _centered_print(screen, t("press_any_key", lang, "Press a key..."), h - 1, w, colour=7)
-    screen.refresh()
-
-    while True:
-        keys = _poll(screen)
-        for key in keys:
-            if key in ("p", "P"):
-                return "play"
-            if key in ("s", "S"):
-                return "settings"
-            if key in ("l", "L"):
-                return "stats"
-            if key in ("q", "Q", "esc"):
-                return "quit"
-        time.sleep(0.05)
+            pass
+    next_row = len(logo)
+    if subtitle:
+        _centered_print(screen, subtitle, next_row, w, colour=8)
+        next_row += 1
+    return next_row
 
 
 def profile_select_screen(
@@ -100,20 +62,19 @@ def profile_select_screen(
     ascii_mode: bool = False,
     audio: Any = None,
 ) -> tuple[str, int | None]:
-    """Profile select. Returns (action, profile_id)."""
-    h, w = screen.dimensions
-    screen.clear()
-
-    _centered_print(screen, t("profile_select", lang, "Select Profile"), 1, w, colour=6)
+    """Profile select under the shared figlet header. Returns (action, id)."""
+    subtitle = t("profile_select", lang, "Select Profile")
 
     if not profiles:
-        _centered_print(screen, "No profiles. Press N to create one.", h // 2, w, colour=7)
+        h, w = screen.dimensions
+        screen.clear_buffer(7, 0, 0)
+        top = _draw_header(screen, w, subtitle=subtitle)
+        _centered_print(screen, "No profiles. Press N to create one.",
+                        max(top + 2, h // 2), w, colour=7)
         _centered_print(screen, "[N] New Profile  [Esc] Back", h - 1, w, colour=7)
         screen.refresh()
-
         while True:
-            keys = _poll(screen)
-            for key in keys:
+            for key in _poll(screen):
                 if key in ("n", "N"):
                     return "create", None
                 if key == "esc":
@@ -122,20 +83,18 @@ def profile_select_screen(
 
     selected = 0
     while True:
-        screen.clear()
-        _centered_print(screen, t("profile_select", lang, "Select Profile"), 1, w, colour=6)
-
+        h, w = screen.dimensions
+        screen.clear_buffer(7, 0, 0)
+        list_top = _draw_header(screen, w, subtitle=subtitle) + 1
         for i, profile in enumerate(profiles):
             marker = ">" if i == selected else " "
             name = profile["display_name"]
-            y = 3 + i
-            screen.print_at(f"{marker} {name}", 2, y, colour=7 if i == selected else 8)
-
+            screen.print_at(f"{marker} {name}", 2, list_top + i,
+                            colour=7 if i == selected else 8)
         _centered_print(screen, "[N] New  [Enter] Select  [Esc] Back", h - 1, w, colour=7)
         screen.refresh()
 
-        keys = _poll(screen)
-        for key in keys:
+        for key in _poll(screen):
             if key == "up" or key == "k":
                 selected = max(0, selected - 1)
                 _sfx(audio, "menu_move.wav")
@@ -161,24 +120,66 @@ def main_menu_screen(
     ascii_mode: bool = False,
     audio: Any = None,
 ) -> str:
-    """Main menu (arrows + Enter, hotkeys optional). Returns action."""
+    """Main menu: figlet header + per-option descriptions. Returns action.
+
+    Dedicated renderer (not list_menu) so the logo that lands from the splash
+    stays as the header and items build in beneath it. Esc means quit.
+    """
     items: list[tuple] = []
     if has_session:
-        items.append(("continue", t("continue_hint", lang, "Continue"), "c"))
+        items.append(("continue", t("continue_hint", lang, "Continue"), "c",
+                      t("desc_continue", lang, "Resume your saved run.")))
     items.extend([
-        ("vocab", "Vocab Mode", "v"),
-        ("story", "Story Mode", "s"),
-        ("stats", t("menu_stats", lang, "Stats"), None),
-        ("settings", t("menu_settings", lang, "Settings"), None),
-        ("switch", "Switch Profile", None),
-        ("quit", t("menu_quit", lang, "Quit"), "q"),
+        ("vocab", "Vocab Mode", "v", t("desc_vocab", lang, "Endless falling words.")),
+        ("story", "Story Mode", "s", t("desc_story", lang, "Type a classic novel.")),
+        ("stats", t("menu_stats", lang, "Stats"), None, t("desc_stats", lang, "Your stats.")),
+        ("settings", t("menu_settings", lang, "Settings"), None,
+         t("desc_settings", lang, "Options.")),
+        ("switch", "Switch Profile", None, t("desc_switch", lang, "Change profile.")),
+        ("credits", t("menu_credits", lang, "Credits"), None,
+         t("desc_credits", lang, "Credits and license.")),
+        ("quit", t("menu_quit", lang, "Quit"), "q", t("desc_quit", lang, "Exit.")),
     ])
-    action = list_menu(
-        screen, f"TermType — {profile_name}", items,
-        ascii_mode=ascii_mode, audio=audio,
-    )
-    # Esc at the top menu means quit (never a destructive surprise elsewhere).
-    return action or "quit"
+    norm = _norm_items(items)
+    footer = ("↑↓ move   ⏎ select   Esc quit" if not ascii_mode
+              else "Up/Down move   Enter select   Esc quit")
+    selected = 0
+
+    while True:
+        h, w = screen.dimensions
+        if h < 24 or w < 80:
+            _render_resize_prompt(screen); _poll(screen); time.sleep(0.05); continue
+
+        screen.clear_buffer(7, 0, 0)
+        top = _draw_header(screen, w, subtitle=profile_name) + 1
+        for i, (_, label, hot, _desc) in enumerate(norm):
+            marker = "> " if i == selected else "  "
+            hint = f" ({hot})" if hot else ""
+            _centered_print(screen, f"{marker}{label}{hint}", top + i, w,
+                            colour=6 if i == selected else 7,
+                            attr=1 if i == selected else 0)
+        desc = norm[selected][3]
+        box_y = top + len(norm) + 1
+        if desc and box_y + 4 <= h - 1:
+            _description_box(screen, desc, box_y, w, ascii_mode)
+        _centered_print(screen, footer, h - 1, w, colour=7)
+        screen.refresh()
+
+        for key in _poll(screen):
+            k = key.lower() if len(key) == 1 else key
+            if key in ("up", "k"):
+                selected = (selected - 1) % len(norm); _sfx(audio, "menu_move.wav")
+            elif key in ("down", "j"):
+                selected = (selected + 1) % len(norm); _sfx(audio, "menu_move.wav")
+            elif key == "enter":
+                _sfx(audio, "menu_select.wav"); return norm[selected][0]
+            elif key == "esc":
+                return "quit"  # Esc at the top menu means quit
+            else:
+                for value, _, hot, _d in norm:
+                    if hot and k == hot.lower():
+                        _sfx(audio, "menu_select.wav"); return value
+        time.sleep(0.05)
 
 
 def _prettify_story(name: str) -> str:
