@@ -9,9 +9,14 @@ Implements TITLE_SCREEN_PLAN.md.
 from __future__ import annotations
 
 import random
+import time
 from dataclasses import dataclass, field
 
+from asciimatics.exceptions import ResizeScreenError
+
 from .entities import FallingWord
+from .input_handler import drain_events
+from .wordsource import load_vocab, t
 
 try:
     import pyfiglet
@@ -161,3 +166,191 @@ def crawl_visible(lines: list[str], offset: float, height: int) -> list[tuple[st
         if 0 <= y < height:
             out.append((text, y))
     return out
+
+
+# ── Screen-driven splash (not unit-tested; render + IO) ──────────────────
+
+FRAME_BUDGET = 1.0 / 30.0
+DROP_DUR = 0.4      # seconds for the logo to fall into the water
+FLASH_DUR = 0.25    # seconds the water flashes red on impact
+MIN_H, MIN_W = 24, 80
+
+
+def _poll(screen) -> list[str]:
+    """Drain input, unwinding to the wrapper re-entry loop on resize."""
+    if screen.has_resized():
+        raise ResizeScreenError("resized", None)
+    return drain_events(screen)
+
+
+def _pace(frame_start: float) -> None:
+    remaining = FRAME_BUDGET - (time.monotonic() - frame_start)
+    if remaining > 0:
+        time.sleep(remaining)
+
+
+def _draw_block(screen, lines: list[str], top: int, w: int, colour: int,
+                clip_at: int | None = None) -> None:
+    """Draw a centered text block; skip rows at/below clip_at (sinks below water)."""
+    block_w = max((len(ln) for ln in lines), default=0)
+    x = max(0, (w - block_w) // 2)
+    for i, line in enumerate(lines):
+        y = top + i
+        if y < 0 or (clip_at is not None and y >= clip_at):
+            continue
+        try:
+            screen.print_at(line, x, y, colour=colour, attr=1)
+        except Exception:
+            pass
+
+
+def _draw_backdrop(screen, bd: "Backdrop", water_row: int) -> None:
+    for word in bd.words:
+        row = int(round(word.row))
+        if row < 0 or row >= water_row:
+            continue
+        try:
+            screen.print_at(word.text, int(round(word.x)), row, colour=8)
+        except Exception:
+            pass
+
+
+def _draw_water(screen, w: int, water_row: int, ascii_mode: bool, flash: bool = False) -> None:
+    ch = "~" if ascii_mode else "≈"
+    try:
+        screen.print_at(ch * w, 0, water_row,
+                        colour=1 if flash else 4, attr=1 if flash else 0)
+    except Exception:
+        pass
+
+
+def title_splash(screen, audio, lang: dict, *, ascii_mode: bool = False,
+                 reduced_motion: bool = False) -> None:
+    """Arcade attract splash: falling words behind a big logo, then a drop.
+
+    Returns when the player presses any key (after the drop animation, unless
+    reduced_motion). Resize unwinds via ResizeScreenError and replays.
+    """
+    pool = load_vocab("en") + load_vocab("it")
+    prompt = t("press_any_key", lang, "Press any key...")
+
+    if reduced_motion:
+        _splash_static(screen, prompt, ascii_mode)
+        return
+
+    rng = random.Random()
+    bd = Backdrop()
+    logo: list[str] = []
+    logo_w = -1
+    start = time.monotonic()
+    last = start
+
+    while True:
+        frame_start = time.monotonic()
+        h, w = screen.dimensions
+        if h < MIN_H or w < MIN_W:
+            _render_below_min(screen)
+            _poll(screen)
+            time.sleep(0.05)
+            last = time.monotonic()
+            continue
+
+        now = time.monotonic()
+        dt = min(now - last, 0.1)
+        last = now
+        elapsed = now - start
+        water_row = h - 2
+        if w != logo_w:
+            logo, logo_w = splash_logo(w), w
+
+        step_backdrop(bd, pool, dt, w, water_row, rng)
+
+        screen.clear_buffer(7, 0, 0)
+        _draw_backdrop(screen, bd, water_row)
+        _draw_water(screen, w, water_row, ascii_mode)
+        if int(elapsed * 2) % 2 == 0:  # ~1 Hz blink
+            _centered(screen, prompt, h - 1, w, colour=7)
+        _draw_block(screen, logo, h // 2 - len(logo) // 2, w, colour=6)
+        screen.refresh()
+
+        if _poll(screen):
+            break
+        _pace(frame_start)
+
+    _splash_drop(screen, audio, bd, logo, ascii_mode)
+
+
+def _splash_static(screen, prompt: str, ascii_mode: bool) -> None:
+    """Reduced-motion splash: static logo + prompt, any key returns."""
+    while True:
+        h, w = screen.dimensions
+        if h < MIN_H or w < MIN_W:
+            _render_below_min(screen)
+            _poll(screen)
+            time.sleep(0.05)
+            continue
+        logo = splash_logo(w)
+        screen.clear_buffer(7, 0, 0)
+        _draw_block(screen, logo, h // 2 - len(logo) // 2, w, colour=6)
+        _centered(screen, prompt, h - 1, w, colour=7)
+        screen.refresh()
+        if _poll(screen):
+            return
+        time.sleep(0.05)
+
+
+def _splash_drop(screen, audio, bd: "Backdrop", logo: list[str], ascii_mode: bool) -> None:
+    """Logo falls into the water with gravity, then a thud + red flash beat."""
+    h, w = screen.dimensions
+    water_row = h - 2
+    start_top = h // 2 - len(logo) // 2
+    target_top = water_row - 1  # crest just above the surface, rest sinks under
+
+    start = time.monotonic()
+    while True:
+        frame_start = time.monotonic()
+        if screen.has_resized():
+            drain_events(screen)
+            raise ResizeScreenError("resized", None)
+        t_frac = (time.monotonic() - start) / DROP_DUR
+        top = logo_drop_row(t_frac, start_top, target_top)
+
+        screen.clear_buffer(7, 0, 0)
+        _draw_backdrop(screen, bd, water_row)
+        _draw_water(screen, w, water_row, ascii_mode)
+        _draw_block(screen, logo, top, w, colour=6, clip_at=water_row)
+        screen.refresh()
+
+        if t_frac >= 1.0:
+            break
+        _pace(frame_start)
+
+    # Impact beat: thud + red water flash (the life-loss juice grammar).
+    if audio is not None:
+        audio.play_sfx(THUD_SFX)
+    flash_start = time.monotonic()
+    while time.monotonic() - flash_start < FLASH_DUR:
+        frame_start = time.monotonic()
+        if screen.has_resized():
+            drain_events(screen)
+            raise ResizeScreenError("resized", None)
+        screen.clear_buffer(7, 0, 0)
+        _draw_backdrop(screen, bd, water_row)
+        _draw_water(screen, w, water_row, ascii_mode, flash=True)
+        _draw_block(screen, logo, target_top, w, colour=6, clip_at=water_row)
+        screen.refresh()
+        _pace(frame_start)
+
+
+def _centered(screen, text: str, y: int, w: int, colour: int = 7) -> None:
+    x = max(0, (w - len(text)) // 2)
+    try:
+        screen.print_at(text, x, y, colour=colour)
+    except Exception:
+        pass
+
+
+def _render_below_min(screen) -> None:
+    """Shared below-minimum resize prompt (lazy import dodges a menus cycle)."""
+    from .menus import _render_resize_prompt
+    _render_resize_prompt(screen)
