@@ -15,6 +15,10 @@ venv/
 .DS_Store
 Thumbs.db
 
+# Demo recording intermediate — re-renderable from scripts/record-demo.sh;
+# only the rendered assets/demo.gif is committed
+assets/demo.cast
+
 # Resolved roadblock notes — kept out of the repo
 archived/
 
