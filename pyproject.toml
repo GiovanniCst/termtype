@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "termtype"
-version = "0.1.0"
+version = "0.2.0"
 description = "A terminal typing game where words fall like Space Invaders"
 authors = [{ name = "Giovanni J. Costantini" }]
 license = { text = "MIT" }
