@@ -110,7 +110,11 @@ def main() -> int:
     # it. --ascii forces the ASCII glyph set regardless.
     _enable_windows_utf8()
     ascii_mode = "--ascii" in sys.argv
-    if not ascii_mode:
+    if not ascii_mode and sys.platform != "win32":
+        # On Windows asciimatics draws via the wide console API, so Unicode
+        # renders regardless of the (legacy cp1252) code page — default to it.
+        # Elsewhere a non-UTF-8 locale means the terminal really can't show the
+        # glyphs, so fall back to ASCII. Either way --ascii forces ASCII.
         encoding = (getattr(sys.stdout, "encoding", "")
                     or locale.getpreferredencoding() or "").lower()
         if "utf" not in encoding:

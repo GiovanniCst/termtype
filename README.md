@@ -18,8 +18,8 @@ Pure-terminal, no GUI. Built on [asciimatics](https://github.com/peterbrittain/a
 - **Progression** — profiles, a local stats page with sparkline charts, leaderboards,
   and unlockable badges.
 - **Word packs** — general English/Italian plus programming and sci-fi vocab.
-- **Retro audio** — CC0 chiptune music and SFX (optional; the game runs silently
-  without the audio extra).
+- **Retro audio** — CC0 chiptune music and SFX (auto-silenced when no audio device
+  is available, e.g. headless/CI).
 - **Degrades gracefully** — `--ascii` for terminals without Unicode/color.
 
 ## Requirements
@@ -37,7 +37,7 @@ git clone https://github.com/GiovanniCst/termtype.git
 cd termtype
 python3.11 -m venv .venv
 source .venv/bin/activate           # on Windows, see "Windows (PowerShell)" below
-pip install -e ".[audio]"           # drop [audio] to skip the sound dependency
+pip install -e .                    # audio (pygame) is included by default
 ```
 
 ## Run
@@ -67,7 +67,7 @@ path avoids the unsigned-script (execution-policy) error you'd otherwise hit on
 git clone https://github.com/GiovanniCst/termtype.git
 cd termtype
 py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[audio]"   # drop [audio] to skip sound
+.\.venv\Scripts\python.exe -m pip install -e .   # audio (pygame) included
 .\.venv\Scripts\termtype.exe
 ```
 
@@ -122,7 +122,7 @@ and Python version (and a screenshot if something looks off).
 ## Development
 
 ```bash
-pip install -e ".[dev,audio]"
+pip install -e ".[dev]"
 pytest
 ```
 
