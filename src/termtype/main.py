@@ -428,8 +428,14 @@ class App:
         except Exception:
             titles = []
         if len(titles) < 3:
-            _flash_message(screen, "Could not reach Hacker News. Try again later.", self.lang)
-            return False
+            # Offline / HN unreachable: offer the baked-in all-time greats.
+            if not _confirm(
+                screen,
+                "Hmm, I can't reach Hacker News right now.",
+                "Type the most upvoted HN submissions of all time instead?",
+            ):
+                return False
+            titles = hn.all_time_top_titles(20)
 
         option_flags = self._option_flags()
         words, sentence_ends, stops = build_live_pool(
@@ -582,6 +588,24 @@ def _input_name(screen: Screen, lang: dict[str, str]) -> str | None:
                 name = name[:-1]
             elif len(key) == 1 and len(name) < 32:
                 name += key
+        time.sleep(0.05)
+
+
+def _confirm(screen: Screen, line1: str, line2: str) -> bool:
+    """Yes/No prompt. Y or Enter confirms; N, Esc or Q declines."""
+    h, w = screen.dimensions
+    screen.clear()
+    _centered_print(screen, line1, h // 2 - 1, w, colour=6)
+    _centered_print(screen, line2, h // 2, w, colour=6)
+    _centered_print(screen, "[Y] Yes      [N] No", h // 2 + 2, w, colour=7)
+    screen.refresh()
+    while True:
+        for key in _poll(screen):
+            k = key.lower() if isinstance(key, str) else key
+            if k in ("y", "enter"):
+                return True
+            if k in ("n", "esc", "q"):
+                return False
         time.sleep(0.05)
 
 
