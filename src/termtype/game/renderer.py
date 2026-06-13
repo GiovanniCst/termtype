@@ -410,7 +410,9 @@ class Renderer:
             title = lines[rank]
             num = f"{rank + 1}."
             head = f"{num} {title}"
-            fill(y, head[:pw], fg=PAGE_FG, attr=1)
+            # bold only on the 8-colour fallback, for weight against the white
+            # page; the 256-colour ink needs no help
+            fill(y, head[:pw], fg=PAGE_FG, attr=0 if fancy else 1)
             # subtext mimicking HN's points/comments meta line
             pts = 30 + (rank * 17) % 380
             cmts = 3 + (rank * 7) % 120
