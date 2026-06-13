@@ -128,11 +128,9 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 ## Platform support
 
-Developed on **Linux / WSL** and also run on **native Windows** (see *Windows
-(PowerShell)* above for setup and display notes). **macOS** *should* work — the code
-is cross-platform — but hasn't been exercised on real hardware yet, so **testers on
-macOS especially welcome.** If you try it, please open an issue with your OS, terminal,
-and Python version (and a screenshot if something looks off).
+Run on real hardware on **Linux / WSL**, **native Windows** (see *Windows (PowerShell)*
+above for setup and display notes), and **macOS**. If something looks off on your setup,
+please open an issue with your OS, terminal, and Python version (and a screenshot).
 
 ## Development
 
