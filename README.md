@@ -83,6 +83,19 @@ Set-ExecutionPolicy -Scope Process Bypass
 > crackle under load; running natively on Windows (above) uses the Windows audio
 > stack directly and avoids it.
 
+**Display notes (Windows):**
+
+- The game switches the console to UTF-8 on startup, so the box-drawing and arrow
+  glyphs render the same as on Linux. Use **Windows Terminal** (or any modern
+  console with a font that has box-drawing, e.g. Cascadia Mono) for the best look.
+  On a legacy console that shows boxes/question marks, run `termtype --ascii` for
+  the plain-ASCII glyph set.
+- The native Windows console is limited to **8 colours** (a limitation of the
+  underlying terminal library), so a few 256-colour touches differ from Linux —
+  most visibly the Hacker News page renders on a white background with a yellow
+  header instead of the cream/orange original. It's styled to stay readable; for
+  the full 256-colour palette, run under WSL or a Linux/macOS terminal.
+
 ## Controls
 
 **In a game**
@@ -100,10 +113,11 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 ## Platform support
 
-Developed and tested on **Linux / WSL**. The code is cross-platform and *should* run
-on macOS and native Windows, but those haven't been exercised on real hardware yet —
-**testers on macOS especially welcome.** If you try it, please open an issue with your
-OS, terminal, and Python version (and a screenshot if something looks off).
+Developed on **Linux / WSL** and also run on **native Windows** (see *Windows
+(PowerShell)* above for setup and display notes). **macOS** *should* work — the code
+is cross-platform — but hasn't been exercised on real hardware yet, so **testers on
+macOS especially welcome.** If you try it, please open an issue with your OS, terminal,
+and Python version (and a screenshot if something looks off).
 
 ## Development
 

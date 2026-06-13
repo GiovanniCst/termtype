@@ -50,6 +50,29 @@ from termtype.game.menus import (
 )
 
 
+def _enable_windows_utf8() -> None:
+    """Switch the Windows console to UTF-8 so box-drawing and arrows render.
+
+    Windows reports a legacy code page (e.g. cp1252) by default, which would
+    drop the game into ASCII mode even though modern terminals (Windows
+    Terminal, Win10+ conhost) handle UTF-8 fine. No-op off Windows; harmless if
+    the console rejects the switch (we still fall back to ASCII via detection).
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+        ctypes.windll.kernel32.SetConsoleCP(65001)
+    except Exception:
+        pass
+    for stream in (sys.stdout, sys.stdin, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
+
 def _clamp_colour(c: Any, palette: int) -> Any:
     """Map a colour index the terminal can't display to white.
 
@@ -83,10 +106,13 @@ def _install_colour_guard(screen: Screen) -> None:
 
 def main() -> int:
     """Main entry point."""
-    # Detect ASCII mode
+    # Try UTF-8 first (esp. Windows), then detect whether the console can take
+    # it. --ascii forces the ASCII glyph set regardless.
+    _enable_windows_utf8()
     ascii_mode = "--ascii" in sys.argv
     if not ascii_mode:
-        encoding = (locale.getpreferredencoding() or "").lower()
+        encoding = (getattr(sys.stdout, "encoding", "")
+                    or locale.getpreferredencoding() or "").lower()
         if "utf" not in encoding:
             ascii_mode = True
 

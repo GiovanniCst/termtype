@@ -353,10 +353,20 @@ class Renderer:
         pw = max(10, w - px)             # panel content width
         fancy = self._color_tier == TIER_256
 
-        # Palette (HN): orange #ff6600, beige page #f6f6ef, gray subtext
-        ORANGE, BEIGE, INK, GRAY = 202, 230, 232, 244
+        # Two-tier palette. Fancy (256): orange #ff6600 bar, beige page, gray meta.
+        # 8-colour fallback keeps the light-page identity — black on a white page
+        # with a yellow bar (the nearest 8-colour orange) — instead of a black
+        # void, and uses blue meta so subtext stays visible on white.
+        if fancy:
+            PAGE_FG, PAGE_BG = 232, 230
+            HEAD_FG, HEAD_BG = 15, 202
+            META, DIVIDER = 244, 244
+        else:
+            PAGE_FG, PAGE_BG = 0, 7
+            HEAD_FG, HEAD_BG = 0, 3
+            META, DIVIDER = 4, 7
 
-        def fill(y, text="", fg=INK if fancy else 7, bg=BEIGE if fancy else 0, attr=0):
+        def fill(y, text="", fg=PAGE_FG, bg=PAGE_BG, attr=0):
             if 0 <= y < h:
                 line = text[:pw].ljust(pw)
                 try:
@@ -367,7 +377,7 @@ class Renderer:
         # Divider column between the play area and the page
         for y in range(h):
             try:
-                self.screen.print_at("|" if self.ascii_mode else "│", x0, y, colour=GRAY)
+                self.screen.print_at("|" if self.ascii_mode else "│", x0, y, colour=DIVIDER)
             except Exception:
                 pass
 
@@ -375,17 +385,14 @@ class Renderer:
         for y in range(h):
             fill(y)
 
-        # Orange header bar with the Y logo + wordmark
+        # Header bar with the Y logo + wordmark
         logo = "[Y]" if self.ascii_mode else "Y"
         header = f" {logo} Hacker News"
-        if fancy:
-            fill(0, header, fg=15, bg=ORANGE, attr=1)
-        else:
-            fill(0, header, fg=0, attr=1)
+        fill(0, header, fg=HEAD_FG, bg=HEAD_BG, attr=1)
 
         # Footer nav, HN-style
         footer = "guidelines | faq | api | security | legal"
-        fill(h - 1, footer, fg=GRAY)
+        fill(h - 1, footer, fg=META)
 
         # Which titles are fully typed yet (one sentence boundary per title)
         done = state.story_words_done
@@ -403,21 +410,21 @@ class Renderer:
             title = lines[rank]
             num = f"{rank + 1}."
             head = f"{num} {title}"
-            fill(y, head[:pw], fg=INK if fancy else 7)
-            # gray subtext mimicking HN's points/comments meta line
+            fill(y, head[:pw], fg=PAGE_FG, attr=1)
+            # subtext mimicking HN's points/comments meta line
             pts = 30 + (rank * 17) % 380
             cmts = 3 + (rank * 7) % 120
             sub = f"    ▲ {pts} points  |  {cmts} comments"
             if self.ascii_mode:
                 sub = f"    ^ {pts} points  |  {cmts} comments"
-            fill(y + 1, sub, fg=GRAY)
+            fill(y + 1, sub, fg=META)
             y += per_item
             if y >= bottom:
                 break
 
         # "next page" hint while more headlines remain to be typed
         if end < len(lines):
-            fill(bottom, f"   typing... {end}/{len(lines)} headlines", fg=GRAY)
+            fill(bottom, f"   typing... {end}/{len(lines)} headlines", fg=META)
 
     def _render_story_ribbon(self, state: GameState, h: int, w: int) -> None:
         """Render the assembled-so-far story text + progress on the bottom row."""

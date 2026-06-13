@@ -24,6 +24,7 @@ class RecordingScreen:
         self.colours = colours
         self._w, self._h = w, h
         self.colours_seen = []
+        self.cells = []  # (text, colour, bg)
 
     @property
     def dimensions(self):
@@ -37,6 +38,7 @@ class RecordingScreen:
 
     def print_at(self, text, x, y, colour=7, attr=0, bg=0):
         self.colours_seen.append(colour)
+        self.cells.append((text, colour, bg))
 
     def refresh(self):
         pass
@@ -124,6 +126,41 @@ def test_hn_divider_safe_on_8_colour_console():
     r.render_frame(state, hud_line="HUD")
     assert screen.colours_seen
     assert max(screen.colours_seen) <= 7
+
+
+def _render_hn(colours, story_words_done=2):
+    from termtype.game.renderer import Renderer
+    from termtype.game.state import GameState
+
+    screen = RecordingScreen(colours=colours)
+    _install_colour_guard(screen)
+    r = Renderer(screen, reduced_motion=True)
+    state = GameState(
+        mode="story", story_skin="hn", play_cols=66,
+        story_words=["alpha", "beta", "gamma", "delta"],
+        sentence_ends={1, 3},
+        story_display_lines=["Alpha Beta Headline", "Gamma Delta Headline"],
+        story_words_done=story_words_done,
+    )
+    r.render_frame(state, hud_line="HUD")
+    return screen
+
+
+def test_hn_fallback_is_visible_on_8_colour_console():
+    # The 8-colour HN page must stay legible: every non-blank cell needs a
+    # foreground distinct from its background (no white-on-white headlines).
+    screen = _render_hn(colours=8)
+    bad = [(t, fg, bg) for (t, fg, bg) in screen.cells if t.strip() and fg == bg]
+    assert not bad, f"invisible (fg==bg) cells: {bad[:5]}"
+    assert max(screen.colours_seen) <= 7
+
+
+def test_hn_fallback_uses_light_page():
+    # Identity check: the fallback renders a light page (white bg), not a black
+    # void, so it reads as Hacker News rather than broken.
+    screen = _render_hn(colours=8)
+    backgrounds = {bg for (_t, _fg, bg) in screen.cells}
+    assert 7 in backgrounds  # white page background present
 
 
 class _S:
