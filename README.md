@@ -1,4 +1,11 @@
-# TermType
+```
+ _______ ______ _____  __  __ _________     _______  ______
+|__   __|  ____|  __ \|  \/  |__   __\ \   / /  __ \|  ____|
+   | |  | |__  | |__) | \  / |  | |   \ \_/ /| |__) | |__
+   | |  |  __| |  _  /| |\/| |  | |    \   / |  ___/|  __|
+   | |  | |____| | \ \| |  | |  | |     | |  | |    | |____
+   |_|  |______|_|  \_\_|  |_|  |_|     |_|  |_|    |______|
+```
 
 A terminal typing game where words fall like Space Invaders — type them before they
 hit the water line, or you drown.
@@ -7,6 +14,8 @@ Pure-terminal, no GUI. Built on [asciimatics](https://github.com/peterbrittain/a
 
 <p align="center">
   <img src="assets/demo.gif" alt="termType demo — Vocab, Hacker News, and Story modes" width="900">
+  <br>
+  <sub><em>termType gameplay, accelerated due to time constraints.</em></sub>
 </p>
 
 ## Features
@@ -133,6 +142,26 @@ pytest
 The game logic is split into pure, render-free modules (state, scoring, word
 matching, levels, persistence) that are unit-tested without a terminal, separate from
 the asciimatics rendering layer.
+
+## Privacy
+
+termType keeps to itself, and you can verify every word of this in the source:
+
+- **Your data never leaves your machine.** Profiles, scores, stats, and settings are
+  stored in a local SQLite database (`~/.termtype/termtype.db`). Nothing is uploaded,
+  synced, or shared.
+- **No telemetry of any kind** — no analytics, crash reporting, ads, accounts, logins,
+  or update checks. The game never "phones home."
+- **One network feature, only on demand.** *Hacker News* mode fetches the current
+  top-story **titles** from the public Hacker News API (`hacker-news.firebaseio.com`)
+  over HTTPS, and only while you are in that mode. The requests are plain GETs with a
+  generic `User-Agent: termType (typing game)` — no personal data is sent — and the
+  fetched titles are held in memory, never written to disk. Offline, it falls back to a
+  built-in list and makes no connection at all.
+- **Everything else works fully offline.**
+
+The only networking code in the whole project is
+[`src/termtype/game/hn.py`](src/termtype/game/hn.py) — read it for yourself.
 
 ## Credits & licensing
 
