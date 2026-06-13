@@ -5,6 +5,10 @@ hit the water line, or you drown.
 
 Pure-terminal, no GUI. Built on [asciimatics](https://github.com/peterbrittain/asciimatics).
 
+<p align="center">
+  <img src="assets/demo.gif" alt="termType demo — Vocab, Hacker News, and Story modes" width="900">
+</p>
+
 ## Features
 
 - **Arcade attract screen** — a falling-word title splash drops the logo into the
