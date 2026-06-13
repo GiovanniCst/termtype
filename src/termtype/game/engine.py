@@ -137,7 +137,7 @@ def _game_loop(
         lives_before = state.lives
         advance(state, dt)
         if state.lives < lives_before:
-            audio.play_sfx("life_lost.wav")
+            audio.play_sfx("life_lost.wav", priority=True)
             # Life-loss juice: brief red flash + bounded shake (§8.1)
             state.effects.life_loss_flash = (state.time_played_seconds, 0.4)
             state.effects.shake = (state.time_played_seconds, 0.4, 1.0)
@@ -151,7 +151,9 @@ def _game_loop(
             state.chapter_fluency = chapter_fluency_score(
                 _calc_wpm(state), _calc_accuracy(state), state.max_pace_chain,
             )
-            audio.play_sfx("level_up.wav")
+            # Chapter complete — a bigger flourish than a routine level-up.
+            audio.play_sfx("level_up.wav", volume=1.0, priority=True)
+            audio.play_sfx("combo.wav", volume=0.9, priority=True)
             return
 
         # Render (HUD included in render_frame); h, w computed above this frame
@@ -222,7 +224,7 @@ def _process_input(
 
     if result.accepted:
         state.total_correct_keystrokes += 1
-        audio.play_sfx("key.wav", volume=0.35)
+        audio.play_sfx("key.wav", volume=0.2)
 
         if result.completed:
             # Word completed — score it and remove from screen
@@ -246,7 +248,12 @@ def _process_input(
 
                     # Determine if word was in red zone
                     is_red = levels.is_red_zone(word_obj.row, state.water_row)
-                    audio.play_sfx("clutch.wav" if is_red else "word.wav", volume=0.8)
+                    # Reward ladder: clutch (red-zone save) punches above a
+                    # normal clear; both sit above the keystroke click.
+                    if is_red:
+                        audio.play_sfx("clutch.wav", volume=1.0, priority=True)
+                    else:
+                        audio.play_sfx("word.wav", volume=0.9, priority=True)
 
                     state.words_typed += 1
                     state.correct_characters += len(word_text)
@@ -255,7 +262,7 @@ def _process_input(
                     if state.words_typed % levels.WORDS_PER_LEVEL == 0:
                         state.level += 1
                         state.effects.level_up = (state.time_played_seconds, state.level)
-                        audio.play_sfx("level_up.wav")
+                        audio.play_sfx("level_up.wav", volume=0.65, priority=True)
 
                     # Calculate time taken (from lock to completion)
                     time_taken = max(0.1, state.time_played_seconds - (word_obj.lock_time or word_obj.spawn_time))
@@ -331,7 +338,7 @@ def _process_input(
                             f"COMBO x{state.combo_count}", word_obj.x, word_obj.row - 1,
                             state.time_played_seconds, "combo",
                         )
-                        audio.play_sfx("combo.wav", volume=0.8)
+                        audio.play_sfx("combo.wav", volume=1.0, priority=True)
 
                     # Update peak score rate
                     state.peak_score_rate = update_peak_score_rate(
@@ -340,7 +347,7 @@ def _process_input(
                     )
 
     elif result.rejected:
-        audio.play_sfx("typo.wav", volume=0.5)
+        audio.play_sfx("typo.wav", volume=0.4)
         # Update combo for typo
         state.combo_count, state.combo_shield, state.combo_typo_window = update_combo(
             state.combo_count, state.combo_shield, state.combo_typo_window,
