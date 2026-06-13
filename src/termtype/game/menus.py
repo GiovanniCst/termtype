@@ -51,7 +51,7 @@ def _draw_header(screen: Screen, w: int, subtitle: str | None = None,
     x = max(0, (w - block_w) // 2)
     for i, line in enumerate(logo):
         if rainbow_tick is None:
-            colour = 6
+            colour = 7  # brand cool-white (matches the splash logo)
         else:
             colour = _RAINBOW[(i + rainbow_tick) % len(_RAINBOW)]
         try:

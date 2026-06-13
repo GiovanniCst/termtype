@@ -18,6 +18,7 @@ COMBO_CHARS_PER_STEP: int = 5   # chars per combo step
 MIN_COMBO_WORD_LEN: int = 2     # words shorter than this don't affect combo
 COMBO_TYPO_WINDOW: int = 10     # keystroke-count window for combo decay
 COMBO_SHIELD_AT: int = 25       # combo milestone granting a shield
+COMBO_SHATTER_MIN: int = 10     # a streak this high or more "shatters" when lost
 
 # Bonus wave (PLAN §3.1)
 BONUS_WAVE_EVERY: int = 5       # levels between bonus waves

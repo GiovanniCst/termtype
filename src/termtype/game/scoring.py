@@ -53,6 +53,21 @@ def combo_factor(combo_count: int) -> float:
     return 1.0 + min(combo_count, 10) * 0.05
 
 
+def combo_callout(combo_count: int) -> str:
+    """Escalating milestone callout so long streaks keep feeling bigger.
+
+    The score multiplier caps at x10, but the *feedback* should keep climbing —
+    this is the visible crescendo fired on each 10-step milestone.
+    """
+    if combo_count >= 40:
+        return f"GODLIKE x{combo_count}"
+    if combo_count >= 30:
+        return f"UNSTOPPABLE x{combo_count}"
+    if combo_count >= 20:
+        return f"ON FIRE x{combo_count}"
+    return f"COMBO x{combo_count}"
+
+
 def word_score(
     word: str,
     time_taken: float,

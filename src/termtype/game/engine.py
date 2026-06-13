@@ -17,7 +17,7 @@ from .word_matcher import process_keystroke
 from .eggs import feed_secret
 from .scoring import (
     word_score, story_word_score, pace_chain_bonus, chapter_fluency_score,
-    in_order_bonus, update_combo, update_peak_score_rate,
+    in_order_bonus, combo_callout, update_combo, update_peak_score_rate,
 )
 from .renderer import Renderer
 from .hud import render_hud
@@ -135,12 +135,17 @@ def _game_loop(
 
         # Advance physics
         lives_before = state.lives
+        combo_before_advance = state.combo_count
         advance(state, dt)
         if state.lives < lives_before:
             audio.play_sfx("life_lost.wav", priority=True)
             # Life-loss juice: brief red flash + bounded shake (§8.1)
             state.effects.life_loss_flash = (state.time_played_seconds, 0.4)
             state.effects.shake = (state.time_played_seconds, 0.4, 1.0)
+        # A drowned word that shatters a real streak gets its own beat; skip the
+        # sound when a life was already lost (life_lost.wav covers that frame).
+        if state.combo_count == 0 and combo_before_advance >= levels.COMBO_SHATTER_MIN:
+            _combo_shatter(state, audio, play_sound=not (state.lives < lives_before))
 
         # Check game over
         if state.lives <= 0:
@@ -337,19 +342,33 @@ def _process_input(
 
                     # Update combo
                     combo_before = state.combo_count
+                    shield_before = state.combo_shield
                     state.combo_count, state.combo_shield, state.combo_typo_window = update_combo(
                         state.combo_count, state.combo_shield, state.combo_typo_window,
                         state.total_keystrokes,
                         clean_chars=len(word_text), word_length=len(word_text),
                         is_bonus_wave=state.bonus_wave_active,
                     )
-                    # Combo stinger + callout on every 10-step milestone crossed
+                    # Combo crescendo: an escalating callout + louder stinger on
+                    # each 10-step milestone, so long streaks keep feeling bigger
+                    # even though the score multiplier caps at x10.
                     if state.combo_count // 10 > combo_before // 10:
                         state.effects.add_popup(
-                            f"COMBO x{state.combo_count}", word_obj.x, word_obj.row - 1,
+                            combo_callout(state.combo_count), word_obj.x, word_obj.row - 1,
                             state.time_played_seconds, "combo",
                         )
-                        audio.play_sfx("combo.wav", volume=1.0, priority=True)
+                        audio.play_sfx(
+                            "combo.wav",
+                            volume=min(1.0, 0.7 + 0.1 * (state.combo_count // 10)),
+                            priority=True,
+                        )
+                    # Shield earned (x25): a distinct beat so the player learns it.
+                    elif state.combo_shield and not shield_before:
+                        state.effects.add_popup(
+                            "SHIELD", word_obj.x, word_obj.row - 1,
+                            state.time_played_seconds, "combo",
+                        )
+                        audio.play_sfx("combo.wav", volume=0.7, priority=True)
 
                     # Update peak score rate
                     state.peak_score_rate = update_peak_score_rate(
@@ -360,11 +379,27 @@ def _process_input(
     elif result.rejected:
         audio.play_sfx("typo.wav", volume=0.4)
         # Update combo for typo
+        combo_before = state.combo_count
         state.combo_count, state.combo_shield, state.combo_typo_window = update_combo(
             state.combo_count, state.combo_shield, state.combo_typo_window,
             state.total_keystrokes,
             is_typo=True,
         )
+        # A real streak collapsing to zero gets a shatter beat (§4.2/§8.1).
+        if state.combo_count == 0 and combo_before >= levels.COMBO_SHATTER_MIN:
+            _combo_shatter(state, audio, play_sound=True)
+
+
+def _combo_shatter(state: GameState, audio: Any, *, play_sound: bool) -> None:
+    """Fire the combo-break beat when a meaningful streak collapses to zero.
+
+    A brief banner (rendered from effects.combo_break) plus, optionally, a
+    distinct streak-lost sound — so losing a long combo has weight instead of
+    vanishing silently.
+    """
+    state.effects.combo_break = state.time_played_seconds
+    if play_sound:
+        audio.play_sfx("life_lost.wav", volume=0.5, priority=True)
 
 
 def _observe_secret(state: GameState, key: str, audio: Any) -> None:

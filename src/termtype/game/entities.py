@@ -129,6 +129,8 @@ class Effects:
     # How long a splash/sparkle burst stays on screen (its animation length).
     SPLASH_TTL = 0.5
     SPARKLE_TTL = 0.6
+    # How long the combo-break banner stays up after a streak shatters.
+    COMBO_BREAK_TTL = 0.7
 
     def clear_expired(self, now: float, popup_ttl: float = 0.6) -> None:
         """Remove expired effects."""
@@ -144,3 +146,5 @@ class Effects:
             self.shake = None
         if self.level_up and now - self.level_up[0] > 1.2:
             self.level_up = None
+        if self.combo_break is not None and now - self.combo_break > self.COMBO_BREAK_TTL:
+            self.combo_break = None

@@ -261,3 +261,21 @@ def test_story_cursor_hidden_when_frontier_locked():
     state.locked_word_index = 0                    # frontier is being typed
     r.render_frame(state, hud_line="")
     assert not any(c[2] == "»" for c in screen.calls)
+
+
+def test_combo_break_banner_renders_when_set():
+    screen = FakeScreen()
+    r = _renderer(screen)
+    state = GameState(mode="vocab", water_row=20.0)
+    state.effects.combo_break = state.time_played_seconds   # 0.0 → active
+    r.render_frame(state, hud_line="")
+    assert "COMBO LOST" in _texts(screen)
+    assert 1 in [c[3] for c in screen.calls if "COMBO LOST" in c[2]]  # red
+
+
+def test_no_combo_break_banner_when_unset():
+    screen = FakeScreen()
+    r = _renderer(screen)
+    state = GameState(mode="vocab", water_row=20.0)
+    r.render_frame(state, hud_line="")
+    assert "COMBO LOST" not in _texts(screen)

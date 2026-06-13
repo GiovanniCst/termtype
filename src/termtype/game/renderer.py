@@ -28,21 +28,11 @@ TIER_256 = 256
 TIER_8 = 8
 TIER_MONO = 0
 
-# Color palette (colorblind-safe: blue → yellow → red)
-COLORS = {
-    "word_far": (7, 7, 7),       # dim white
-    "word_mid": (6, 6, 0),       # yellow-ish
-    "word_near": (1, 1, 0),      # red-ish
-    "locked": (2, 2, 0),         # bright
-    "typed": (4, 4, 0),          # green-ish
-    "water": (4, 4, 0),          # blue
-    "hud": (7, 7, 7),            # white
-    "error": (1, 1, 0),          # red
-    "bonus": (6, 6, 0),          # yellow
-    "popup_fast": (6, 6, 0),     # yellow
-    "popup_good": (4, 4, 0),     # green
-    "popup_slow": (7, 7, 7),     # white
-}
+# Colour language — asciimatics palette indices used across the renderer
+# (clamped to white above the terminal's palette; see main._install_colour_guard):
+#   urgency ramp far→near: 7 (dim) → 6 → 1 (danger)
+#   4 = water + typed glyphs        2 = lock brackets
+#   3 = onboarding + story cursor   5 = combo callouts   1 = combo-break banner
 
 
 def splash_frame(age: float, ttl: float = 0.5) -> list[tuple[int, str]]:
@@ -188,6 +178,9 @@ class Renderer:
 
         # Level-up banner (on top of the field, briefly)
         self._render_levelup_banner(state, h, w)
+
+        # Combo-break banner (brief, when a real streak shatters)
+        self._render_combo_break(state, h, w)
 
         self.screen.refresh()
 
@@ -346,6 +339,19 @@ class Renderer:
         row = max(1, h // 2 - 1)
         try:
             self.screen.print_at(text, x, row, colour=6, attr=1)
+        except Exception:
+            pass
+
+    def _render_combo_break(self, state: GameState, h: int, w: int) -> None:
+        """Brief centered banner when a combo streak shatters (§4.2/§8.1)."""
+        if state.effects.combo_break is None:
+            return
+        mark = "X" if self.ascii_mode else "✖"
+        text = f"{mark}  COMBO LOST  {mark}"
+        x = max(0, (w - len(text)) // 2)
+        row = min(h - 2, max(2, h // 2 + 1))
+        try:
+            self.screen.print_at(text, x, row, colour=1, attr=1)
         except Exception:
             pass
 
