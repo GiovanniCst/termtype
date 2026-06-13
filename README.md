@@ -167,6 +167,10 @@ The only networking code in the whole project is
 
 ## Credits & licensing
 
+termType was **ideated and orchestrated by Giovanni J. Costantini** and **coded by
+autonomous AI agents** — Opus, Kimi, and Fable — working under his direction. The same
+disclosure appears in the game's own credits.
+
 In-game credits (author, website, and these attributions) are available from the
 **Credits** entry on the main menu.
 
