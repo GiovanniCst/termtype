@@ -25,7 +25,8 @@ from .audio import NullAudio
 from . import levels
 
 
-FRAME_BUDGET = 1.0 / 30.0  # 30 FPS
+FRAME_BUDGET = 1.0 / 30.0  # 30 FPS render cadence
+INPUT_POLL_S = 0.005       # drain input every ~5ms within a frame for low latency
 
 
 def play_session(
@@ -166,11 +167,21 @@ def _game_loop(
         )
         renderer.render_frame(state, hud_line=hud_line)
 
-        # Frame pacing
-        elapsed = now() - frame_start
-        remaining = FRAME_BUDGET - elapsed
-        if remaining > 0:
-            time.sleep(remaining)
+        # Frame pacing with fine-grained input polling. Render stays at 30 Hz,
+        # but instead of one long sleep we drain+process input every INPUT_POLL_S
+        # until the next frame is due, so a keystroke is acted on (and its click
+        # sound fires) within a few ms instead of up to a full frame later.
+        while True:
+            remaining = FRAME_BUDGET - (now() - frame_start)
+            if remaining <= 0:
+                break
+            time.sleep(min(remaining, INPUT_POLL_S))
+            if screen.has_resized():
+                break  # let the top of the loop unwind the resize
+            if state.paused:
+                break  # let the top of the loop raise the pause screen
+            for key in drain_events(screen):
+                _process_input(state, key, hard_lock, no_backspace, audio)
 
 
 def _process_input(

@@ -376,7 +376,7 @@ def title_splash(screen, audio, lang: dict, *, ascii_mode: bool = False,
         if h < MIN_H or w < MIN_W:
             _render_below_min(screen)
             _poll(screen)
-            time.sleep(0.05)
+            time.sleep(0.015)
             last = time.monotonic()
             continue
 
@@ -438,7 +438,7 @@ def _splash_static(screen, prompt: str, ascii_mode: bool) -> None:
         if h < MIN_H or w < MIN_W:
             _render_below_min(screen)
             _poll(screen)
-            time.sleep(0.05)
+            time.sleep(0.015)
             continue
         logo = splash_logo(w)
         screen.clear_buffer(7, 0, 0)
@@ -447,7 +447,7 @@ def _splash_static(screen, prompt: str, ascii_mode: bool) -> None:
         screen.refresh()
         if _poll(screen):
             return
-        time.sleep(0.05)
+        time.sleep(0.015)
 
 
 def _splash_drop(screen, audio, bd: "Backdrop", logo: list[str], ascii_mode: bool,
@@ -554,7 +554,7 @@ def credits_screen(screen, lang: dict, *, ascii_mode: bool = False, audio=None) 
         if h < MIN_H or w < MIN_W:
             _render_below_min(screen)
             _poll(screen)
-            time.sleep(0.05)
+            time.sleep(0.015)
             last = time.monotonic()
             continue
 
