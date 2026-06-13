@@ -22,20 +22,16 @@ Pure-terminal, no GUI. Built on [asciimatics](https://github.com/peterbrittain/a
 
 ## Features
 
-- **Arcade attract screen** — a falling-word title splash drops the logo into the
-  water on any key, with self-explaining menus and an in-game credits crawl.
-- **Arcade mode** — escalating waves, combos, lives, a danger "red zone" near the
-  water line, and plateau surges that ramp the pressure the longer you survive.
-- **Story mode** — type your way through public-domain books (English & Italian) in
-  reading order, with a "typed so far" ribbon and resume-where-you-left-off. Pick Zen
-  (relaxed) or Challenge difficulty.
-- **Hacker News mode** — type over a live-rendered fake HN front page.
-- **Progression** — profiles, a local stats page with sparkline charts, leaderboards,
-  and unlockable badges.
-- **Word packs** — general English/Italian plus programming and sci-fi vocab.
-- **Retro audio** — CC0 chiptune music and SFX (auto-silenced when no audio device
-  is available, e.g. headless/CI).
-- **Degrades gracefully** — `--ascii` for terminals without Unicode/color.
+- **Vocab mode** — endless arcade: type words before they hit the water; waves
+  escalate, combos build, lives run out.
+- **Story mode** — type public-domain books (English & Italian) in order; resume where
+  you left off; Zen or Challenge.
+- **Hacker News mode** — type over a live HN front page (or the all-time top posts,
+  offline).
+- **Progression** — profiles, stats with sparkline charts, leaderboards, badges.
+- **Word packs** — English/Italian, plus programming and sci-fi vocab.
+- **Retro audio** — CC0 chiptune music and SFX.
+- **Cross-platform** — Linux, macOS, Windows; `--ascii` for limited terminals.
 
 ## Requirements
 
@@ -100,16 +96,11 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 **Display notes (Windows):**
 
-- The game switches the console to UTF-8 on startup, so the box-drawing and arrow
-  glyphs render the same as on Linux. Use **Windows Terminal** (or any modern
-  console with a font that has box-drawing, e.g. Cascadia Mono) for the best look.
-  On a legacy console that shows boxes/question marks, run `termtype --ascii` for
-  the plain-ASCII glyph set.
-- The native Windows console is limited to **8 colours** (a limitation of the
-  underlying terminal library), so a few 256-colour touches differ from Linux —
-  most visibly the Hacker News page renders on a white background with a yellow
-  header instead of the cream/orange original. It's styled to stay readable; for
-  the full 256-colour palette, run under WSL or a Linux/macOS terminal.
+- Use **Windows Terminal** with a box-drawing font like Cascadia Mono. UTF-8 is enabled
+  automatically; if glyphs still show as boxes, run `termtype --ascii`.
+- The Windows console is capped at **8 colours**, so some 256-colour touches differ —
+  notably the Hacker News page (white/yellow instead of cream/orange). For the full
+  palette, run under WSL or on Linux/macOS.
 
 ## Controls
 
