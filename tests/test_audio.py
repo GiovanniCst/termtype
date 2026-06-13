@@ -47,7 +47,37 @@ class TestVolumeClamp:
         assert isinstance(result, (AudioManager, NullAudio))
 
     def test_null_audio_play_sfx_noop(self):
-        """NullAudio.play_sfx doesn't raise."""
+        """NullAudio.play_sfx doesn't raise (incl. the priority kwarg)."""
         audio = NullAudio()
         audio.play_sfx("test.wav", volume=0.5)
+        audio.play_sfx("test.wav", volume=0.5, priority=True)
         # No assertion needed — just shouldn't raise
+
+
+class TestSfxVariation:
+    """Round-robin pitch variation for rapid-fire SFX (key/typo)."""
+
+    def _manager(self):
+        mgr = create_audio_manager()
+        if not isinstance(mgr, AudioManager) or not mgr.is_available():
+            pytest.skip("no audio mixer available")
+        return mgr
+
+    def test_varied_sfx_has_multiple_variants(self):
+        mgr = self._manager()
+        from termtype.game.audio import _PITCH_FACTORS
+        assert len(mgr._load_variants("key.wav")) == len(_PITCH_FACTORS)
+
+    def test_non_varied_sfx_has_single_variant(self):
+        mgr = self._manager()
+        assert len(mgr._load_variants("word.wav")) == 1
+
+    def test_next_sound_round_robins(self):
+        mgr = self._manager()
+        ids = {id(mgr._next_sound("key.wav")) for _ in range(8)}
+        assert len(ids) == len(mgr._load_variants("key.wav")) >= 2
+
+    def test_play_sfx_priority_does_not_raise(self):
+        mgr = self._manager()
+        mgr.play_sfx("word.wav", volume=0.9, priority=True)
+        mgr.play_sfx("key.wav", volume=0.2)

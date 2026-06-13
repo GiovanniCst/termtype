@@ -18,6 +18,7 @@ COMBO_CHARS_PER_STEP: int = 5   # chars per combo step
 MIN_COMBO_WORD_LEN: int = 2     # words shorter than this don't affect combo
 COMBO_TYPO_WINDOW: int = 10     # keystroke-count window for combo decay
 COMBO_SHIELD_AT: int = 25       # combo milestone granting a shield
+COMBO_SHATTER_MIN: int = 10     # a streak this high or more "shatters" when lost
 
 # Bonus wave (PLAN §3.1)
 BONUS_WAVE_EVERY: int = 5       # levels between bonus waves
@@ -32,6 +33,11 @@ PLATEAU_SURGE_RAMP: float = 0.05  # speed increase per surge
 STORY_STOPWORD_WEIGHT: float = 0.25
 STORY_PACE_BONUS: int = 25        # base per-sentence pace-chain award
 STORY_PACE_CHAIN_CAP: int = 10    # escalation caps here
+# In-order "flow": a small escalating bonus for clearing the reading-order
+# frontier word. Kept tiny on purpose — chasing order must never tempt a player
+# to let an urgent word drown (a drown forfeits far more via the pace chain).
+STORY_IN_ORDER_BONUS: int = 2     # points per consecutive in-order clear
+STORY_FLOW_CAP: int = 5           # escalation caps here (max +10)
 
 # Story-mode side panel (HN skin): max width in columns of the right-hand panel;
 # the playfield gets the rest. engine.play_cols and the renderer divider both read

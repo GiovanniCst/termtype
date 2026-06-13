@@ -267,7 +267,7 @@ class App:
                     choice = 1
                 elif key in ("n", "N", "esc"):
                     choice = 0
-            time.sleep(0.05)
+            time.sleep(0.015)
 
         self.config["music_on"] = choice
         extra["music_prompted"] = 1
@@ -588,7 +588,7 @@ def _input_name(screen: Screen, lang: dict[str, str]) -> str | None:
                 name = name[:-1]
             elif len(key) == 1 and len(name) < 32:
                 name += key
-        time.sleep(0.05)
+        time.sleep(0.015)
 
 
 def _confirm(screen: Screen, line1: str, line2: str) -> bool:
@@ -606,7 +606,7 @@ def _confirm(screen: Screen, line1: str, line2: str) -> bool:
                 return True
             if k in ("n", "esc", "q"):
                 return False
-        time.sleep(0.05)
+        time.sleep(0.015)
 
 
 def _flash_message(screen: Screen, message: str, lang: dict[str, str]) -> None:
@@ -619,7 +619,7 @@ def _flash_message(screen: Screen, message: str, lang: dict[str, str]) -> None:
     while True:
         if _poll(screen):
             return
-        time.sleep(0.05)
+        time.sleep(0.015)
 
 
 def _commit_game_over(conn: Any, profile_id: int, state: GameState) -> None:

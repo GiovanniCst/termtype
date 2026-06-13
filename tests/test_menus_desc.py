@@ -65,11 +65,11 @@ def test_wrap_desc_truncates_to_two_lines_with_ellipsis():
     assert out[-1].endswith("...")
 
 
-def test_header_default_colour_is_cyan():
+def test_header_default_colour_is_brand_white():
     screen = _RecScreen()
     _draw_header(screen, 80)
     colours = {c[3] for c in screen.calls if c[0].strip()}
-    assert colours == {6}                       # plain cyan header by default
+    assert colours == {7}                       # brand cool-white header by default
 
 
 def test_header_rainbow_tick_uses_palette():
@@ -78,7 +78,7 @@ def test_header_rainbow_tick_uses_palette():
     colours = {c[3] for c in screen.calls if c[0].strip()}
     assert colours                              # something drawn
     assert colours <= set(_RAINBOW)             # only palette colours
-    assert colours != {6}                       # not the plain header
+    assert colours != {7}                       # not the plain brand-white header
 
 
 def test_lang_files_have_identical_keys():

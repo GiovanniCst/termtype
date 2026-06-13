@@ -51,7 +51,7 @@ def _draw_header(screen: Screen, w: int, subtitle: str | None = None,
     x = max(0, (w - block_w) // 2)
     for i, line in enumerate(logo):
         if rainbow_tick is None:
-            colour = 6
+            colour = 7  # brand cool-white (matches the splash logo)
         else:
             colour = _RAINBOW[(i + rainbow_tick) % len(_RAINBOW)]
         try:
@@ -89,7 +89,7 @@ def profile_select_screen(
                     return "create", None
                 if key == "esc":
                     return "back", None
-            time.sleep(0.05)
+            time.sleep(0.015)
 
     selected = 0
     while True:
@@ -119,7 +119,7 @@ def profile_select_screen(
                 return "create", None
             elif key == "esc":
                 return "back", None
-        time.sleep(0.05)
+        time.sleep(0.015)
 
 
 def main_menu_screen(
@@ -160,7 +160,7 @@ def main_menu_screen(
     while True:
         h, w = screen.dimensions
         if h < 24 or w < 80:
-            _render_resize_prompt(screen); _poll(screen); time.sleep(0.05); continue
+            _render_resize_prompt(screen); _poll(screen); time.sleep(0.015); continue
 
         now = time.monotonic()
         tick = int(now * 8) if now < rainbow_until else None
@@ -197,7 +197,7 @@ def main_menu_screen(
                 for value, _, hot, _d in norm:
                     if hot and k == hot.lower():
                         _sfx(audio, "menu_select.wav"); return value
-        time.sleep(0.05)
+        time.sleep(0.015)
 
 
 def _prettify_story(name: str) -> str:
@@ -293,7 +293,7 @@ def list_menu(
         if h < min_h or w < min_w:
             _render_resize_prompt(screen)
             _poll(screen)
-            time.sleep(0.05)
+            time.sleep(0.015)
             continue
 
         screen.clear_buffer(7, 0, 0)
@@ -330,7 +330,7 @@ def list_menu(
                     if hot and k == hot.lower():
                         _sfx(audio, "menu_select.wav")
                         return value
-        time.sleep(0.05)
+        time.sleep(0.015)
 
 
 def _vals(rows: list[dict], key: str) -> list[float]:
@@ -370,7 +370,7 @@ def stats_page_screen(
     while True:
         h, w = screen.dimensions
         if h < 15 or w < 80:
-            _render_resize_prompt(screen); _poll(screen); time.sleep(0.05); continue
+            _render_resize_prompt(screen); _poll(screen); time.sleep(0.015); continue
 
         screen.clear()
         _centered_print(screen, "Stats", 0, w, colour=6)
@@ -399,7 +399,7 @@ def stats_page_screen(
                     page = 1; _sfx(audio, "menu_move.wav")
                 elif key in ("left", "h", "p") and page == 1:
                     page = 0; _sfx(audio, "menu_move.wav")
-        time.sleep(0.05)
+        time.sleep(0.015)
 
 
 def _render_stats_summary(screen: Screen, stats: dict, earned_badges: set, w: int) -> None:
@@ -466,7 +466,7 @@ def options_screen(
     while True:
         h, w = screen.dimensions
         if h < 24 or w < 80:
-            _render_resize_prompt(screen); _poll(screen); time.sleep(0.05); continue
+            _render_resize_prompt(screen); _poll(screen); time.sleep(0.015); continue
         screen.clear_buffer(7, 0, 0)
         _centered_print(screen, "Game Options", 1, w, colour=6)
         top = max(3, h // 2 - len(rows) // 2)
@@ -501,7 +501,7 @@ def options_screen(
             elif k in hotkeys:             # n/a/p toggle their modifier directly
                 flags[hotkeys[k]] = not flags[hotkeys[k]]
                 _sfx(audio, "menu_move.wav")
-        time.sleep(0.05)
+        time.sleep(0.015)
 
 
 # Sentinel returned by story_select_screen when the live HN sub-mode is chosen.
@@ -574,7 +574,7 @@ def pause_screen(
                 return "resume"
             if key in ("q", "Q"):
                 return "quit"
-        time.sleep(0.05)
+        time.sleep(0.015)
 
 
 def game_over_screen(
@@ -628,7 +628,7 @@ def game_over_screen(
                 return "save"
             if key in ("q", "Q", "esc"):
                 return "quit"
-        time.sleep(0.05)
+        time.sleep(0.015)
 
 
 def settings_screen(
@@ -709,7 +709,7 @@ def settings_screen(
                     config["reduced_motion"] = 0 if config.get("reduced_motion") else 1
             elif key == "esc":
                 return config
-        time.sleep(0.05)
+        time.sleep(0.015)
 
 
 def _centered_print(screen: Screen, text: str, y: int, w: int, colour: int = 7, attr: int = 0) -> None:

@@ -53,6 +53,21 @@ def combo_factor(combo_count: int) -> float:
     return 1.0 + min(combo_count, 10) * 0.05
 
 
+def combo_callout(combo_count: int) -> str:
+    """Escalating milestone callout so long streaks keep feeling bigger.
+
+    The score multiplier caps at x10, but the *feedback* should keep climbing —
+    this is the visible crescendo fired on each 10-step milestone.
+    """
+    if combo_count >= 40:
+        return f"GODLIKE x{combo_count}"
+    if combo_count >= 30:
+        return f"UNSTOPPABLE x{combo_count}"
+    if combo_count >= 20:
+        return f"ON FIRE x{combo_count}"
+    return f"COMBO x{combo_count}"
+
+
 def word_score(
     word: str,
     time_taken: float,
@@ -216,6 +231,17 @@ def story_word_score(
     am = accuracy_multiplier(error_count)
 
     return bv * sb * am
+
+
+def in_order_bonus(flow: int) -> int:
+    """Small escalating bonus for clearing story words in reading order (§5.2).
+
+    flow is the count of consecutive in-order clears (1 = first). Capped tiny so
+    chasing order never outweighs saving an urgent word from drowning.
+    """
+    if flow <= 0:
+        return 0
+    return levels.STORY_IN_ORDER_BONUS * min(flow, levels.STORY_FLOW_CAP)
 
 
 def pace_chain_bonus(chain_len: int) -> int:

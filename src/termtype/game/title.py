@@ -88,8 +88,12 @@ def _figlet_lines(font: str, width: int) -> list[str] | None:
 
 
 def splash_logo(width: int) -> list[str]:
-    """Large centered logo for the splash: big font, else small, else plain."""
-    for font in ("big", "small"):
+    """Large centered logo for the splash.
+
+    Leads with the 'standard' FIGlet face to match the README brand banner,
+    falling back to narrower fonts only when the terminal is too tight.
+    """
+    for font in ("standard", "big", "small"):
         lines = _figlet_lines(font, width)
         if lines is not None:
             return lines
@@ -376,7 +380,7 @@ def title_splash(screen, audio, lang: dict, *, ascii_mode: bool = False,
         if h < MIN_H or w < MIN_W:
             _render_below_min(screen)
             _poll(screen)
-            time.sleep(0.05)
+            time.sleep(0.015)
             last = time.monotonic()
             continue
 
@@ -413,7 +417,7 @@ def title_splash(screen, audio, lang: dict, *, ascii_mode: bool = False,
                 _draw_block(screen, [line], logo_top + i, w,
                             colour=_rainbow_colour(i, tick))
         else:
-            _draw_block(screen, logo, logo_top, w, colour=6)
+            _draw_block(screen, logo, logo_top, w, colour=7)  # brand cool-white
         screen.refresh()
 
         # Drain input. A key that completes or is mid-way through the hidden
@@ -438,16 +442,16 @@ def _splash_static(screen, prompt: str, ascii_mode: bool) -> None:
         if h < MIN_H or w < MIN_W:
             _render_below_min(screen)
             _poll(screen)
-            time.sleep(0.05)
+            time.sleep(0.015)
             continue
         logo = splash_logo(w)
         screen.clear_buffer(7, 0, 0)
-        _draw_block(screen, logo, h // 2 - len(logo) // 2, w, colour=6)
+        _draw_block(screen, logo, h // 2 - len(logo) // 2, w, colour=7)
         _centered(screen, prompt, h - 1, w, colour=7)
         screen.refresh()
         if _poll(screen):
             return
-        time.sleep(0.05)
+        time.sleep(0.015)
 
 
 def _splash_drop(screen, audio, bd: "Backdrop", logo: list[str], ascii_mode: bool,
@@ -471,7 +475,7 @@ def _splash_drop(screen, audio, bd: "Backdrop", logo: list[str], ascii_mode: boo
         _draw_stars(screen, stars, water_row)
         _draw_backdrop(screen, bd, water_row)
         _draw_water(screen, w, water_row, ascii_mode)
-        _draw_block(screen, logo, top, w, colour=6, clip_at=water_row)
+        _draw_block(screen, logo, top, w, colour=7, clip_at=water_row)
         screen.refresh()
 
         if t_frac >= 1.0:
@@ -491,7 +495,7 @@ def _splash_drop(screen, audio, bd: "Backdrop", logo: list[str], ascii_mode: boo
         _draw_stars(screen, stars, water_row)
         _draw_backdrop(screen, bd, water_row)
         _draw_water(screen, w, water_row, ascii_mode, flash=True)
-        _draw_block(screen, logo, target_top, w, colour=6, clip_at=water_row)
+        _draw_block(screen, logo, target_top, w, colour=7, clip_at=water_row)
         screen.refresh()
         _pace(frame_start)
 
@@ -554,7 +558,7 @@ def credits_screen(screen, lang: dict, *, ascii_mode: bool = False, audio=None) 
         if h < MIN_H or w < MIN_W:
             _render_below_min(screen)
             _poll(screen)
-            time.sleep(0.05)
+            time.sleep(0.015)
             last = time.monotonic()
             continue
 

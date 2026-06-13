@@ -234,3 +234,48 @@ def test_story_ribbon_shows_progress():
     out = _texts(screen)
     assert "[2/3]" in out                # progress counter
     assert "alpha beta" in out           # assembled-so-far ribbon
+
+
+def _story_words_state():
+    from termtype.game.entities import FallingWord
+    state = GameState(mode="story", story_words=["alpha", "beta"], water_row=20.0)
+    state.words = [FallingWord(text="alpha", x=10, row=5.0, speed=1.0),
+                   FallingWord(text="beta", x=30, row=3.0, speed=1.0)]
+    return state
+
+
+def test_story_cursor_marks_frontier_word():
+    screen = FakeScreen()
+    r = _renderer(screen)                          # reduced_motion=True
+    r.render_frame(_story_words_state(), hud_line="")
+    # Chevron sits 3 cols left of the frontier word (x=10) on its row (5)…
+    assert any(c[2] == "»" and c[1] == 7 and c[0] == 5 for c in screen.calls)
+    # …in the bold-cyan channel, and survives reduced motion (unlike the fin).
+    assert _colours_of(screen, "»") == [3]
+
+
+def test_story_cursor_hidden_when_frontier_locked():
+    screen = FakeScreen()
+    r = _renderer(screen)
+    state = _story_words_state()
+    state.locked_word_index = 0                    # frontier is being typed
+    r.render_frame(state, hud_line="")
+    assert not any(c[2] == "»" for c in screen.calls)
+
+
+def test_combo_break_banner_renders_when_set():
+    screen = FakeScreen()
+    r = _renderer(screen)
+    state = GameState(mode="vocab", water_row=20.0)
+    state.effects.combo_break = state.time_played_seconds   # 0.0 → active
+    r.render_frame(state, hud_line="")
+    assert "COMBO LOST" in _texts(screen)
+    assert 1 in [c[3] for c in screen.calls if "COMBO LOST" in c[2]]  # red
+
+
+def test_no_combo_break_banner_when_unset():
+    screen = FakeScreen()
+    r = _renderer(screen)
+    state = GameState(mode="vocab", water_row=20.0)
+    r.render_frame(state, hud_line="")
+    assert "COMBO LOST" not in _texts(screen)

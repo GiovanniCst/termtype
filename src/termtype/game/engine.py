@@ -17,7 +17,7 @@ from .word_matcher import process_keystroke
 from .eggs import feed_secret
 from .scoring import (
     word_score, story_word_score, pace_chain_bonus, chapter_fluency_score,
-    update_combo, update_peak_score_rate,
+    in_order_bonus, combo_callout, update_combo, update_peak_score_rate,
 )
 from .renderer import Renderer
 from .hud import render_hud
@@ -25,7 +25,8 @@ from .audio import NullAudio
 from . import levels
 
 
-FRAME_BUDGET = 1.0 / 30.0  # 30 FPS
+FRAME_BUDGET = 1.0 / 30.0  # 30 FPS render cadence
+INPUT_POLL_S = 0.005       # drain input every ~5ms within a frame for low latency
 
 
 def play_session(
@@ -134,12 +135,17 @@ def _game_loop(
 
         # Advance physics
         lives_before = state.lives
+        combo_before_advance = state.combo_count
         advance(state, dt)
         if state.lives < lives_before:
-            audio.play_sfx("life_lost.wav")
+            audio.play_sfx("life_lost.wav", priority=True)
             # Life-loss juice: brief red flash + bounded shake (§8.1)
             state.effects.life_loss_flash = (state.time_played_seconds, 0.4)
             state.effects.shake = (state.time_played_seconds, 0.4, 1.0)
+        # A drowned word that shatters a real streak gets its own beat; skip the
+        # sound when a life was already lost (life_lost.wav covers that frame).
+        if state.combo_count == 0 and combo_before_advance >= levels.COMBO_SHATTER_MIN:
+            _combo_shatter(state, audio, play_sound=not (state.lives < lives_before))
 
         # Check game over
         if state.lives <= 0:
@@ -150,7 +156,9 @@ def _game_loop(
             state.chapter_fluency = chapter_fluency_score(
                 _calc_wpm(state), _calc_accuracy(state), state.max_pace_chain,
             )
-            audio.play_sfx("level_up.wav")
+            # Chapter complete — a bigger flourish than a routine level-up.
+            audio.play_sfx("level_up.wav", volume=1.0, priority=True)
+            audio.play_sfx("combo.wav", volume=0.9, priority=True)
             return
 
         # Render (HUD included in render_frame); h, w computed above this frame
@@ -166,11 +174,21 @@ def _game_loop(
         )
         renderer.render_frame(state, hud_line=hud_line)
 
-        # Frame pacing
-        elapsed = now() - frame_start
-        remaining = FRAME_BUDGET - elapsed
-        if remaining > 0:
-            time.sleep(remaining)
+        # Frame pacing with fine-grained input polling. Render stays at 30 Hz,
+        # but instead of one long sleep we drain+process input every INPUT_POLL_S
+        # until the next frame is due, so a keystroke is acted on (and its click
+        # sound fires) within a few ms instead of up to a full frame later.
+        while True:
+            remaining = FRAME_BUDGET - (now() - frame_start)
+            if remaining <= 0:
+                break
+            time.sleep(min(remaining, INPUT_POLL_S))
+            if screen.has_resized():
+                break  # let the top of the loop unwind the resize
+            if state.paused:
+                break  # let the top of the loop raise the pause screen
+            for key in drain_events(screen):
+                _process_input(state, key, hard_lock, no_backspace, audio)
 
 
 def _process_input(
@@ -211,7 +229,7 @@ def _process_input(
 
     if result.accepted:
         state.total_correct_keystrokes += 1
-        audio.play_sfx("key.wav", volume=0.35)
+        audio.play_sfx("key.wav", volume=0.2)
 
         if result.completed:
             # Word completed — score it and remove from screen
@@ -225,6 +243,9 @@ def _process_input(
                         break
 
                 if completed_idx is not None:
+                    # Index 0 is the reading-order frontier (FIFO spawn order),
+                    # so clearing it in story mode counts as "in order".
+                    in_order = completed_idx == 0
                     word_obj = state.words.pop(completed_idx)
                     # Fix locked_word_index after removal
                     if state.locked_word_index is not None:
@@ -235,7 +256,12 @@ def _process_input(
 
                     # Determine if word was in red zone
                     is_red = levels.is_red_zone(word_obj.row, state.water_row)
-                    audio.play_sfx("clutch.wav" if is_red else "word.wav", volume=0.8)
+                    # Reward ladder: clutch (red-zone save) punches above a
+                    # normal clear; both sit above the keystroke click.
+                    if is_red:
+                        audio.play_sfx("clutch.wav", volume=1.0, priority=True)
+                    else:
+                        audio.play_sfx("word.wav", volume=0.9, priority=True)
 
                     state.words_typed += 1
                     state.correct_characters += len(word_text)
@@ -244,7 +270,7 @@ def _process_input(
                     if state.words_typed % levels.WORDS_PER_LEVEL == 0:
                         state.level += 1
                         state.effects.level_up = (state.time_played_seconds, state.level)
-                        audio.play_sfx("level_up.wav")
+                        audio.play_sfx("level_up.wav", volume=0.65, priority=True)
 
                     # Calculate time taken (from lock to completion)
                     time_taken = max(0.1, state.time_played_seconds - (word_obj.lock_time or word_obj.spawn_time))
@@ -257,6 +283,14 @@ def _process_input(
                             is_stopword=is_stop,
                         ))
                         state.story_words_done += 1
+                        # In-order flow: clearing the frontier word builds a
+                        # small escalating bonus; skipping ahead resets it.
+                        if in_order:
+                            state.story_flow += 1
+                            state.max_story_flow = max(state.max_story_flow, state.story_flow)
+                            score += in_order_bonus(state.story_flow)
+                        else:
+                            state.story_flow = 0
                         # Per-sentence pace chain (§5.2): award an escalating
                         # bonus for each sentence cleared without a drown.
                         prev_done = state.sentences_completed
@@ -308,19 +342,33 @@ def _process_input(
 
                     # Update combo
                     combo_before = state.combo_count
+                    shield_before = state.combo_shield
                     state.combo_count, state.combo_shield, state.combo_typo_window = update_combo(
                         state.combo_count, state.combo_shield, state.combo_typo_window,
                         state.total_keystrokes,
                         clean_chars=len(word_text), word_length=len(word_text),
                         is_bonus_wave=state.bonus_wave_active,
                     )
-                    # Combo stinger + callout on every 10-step milestone crossed
+                    # Combo crescendo: an escalating callout + louder stinger on
+                    # each 10-step milestone, so long streaks keep feeling bigger
+                    # even though the score multiplier caps at x10.
                     if state.combo_count // 10 > combo_before // 10:
                         state.effects.add_popup(
-                            f"COMBO x{state.combo_count}", word_obj.x, word_obj.row - 1,
+                            combo_callout(state.combo_count), word_obj.x, word_obj.row - 1,
                             state.time_played_seconds, "combo",
                         )
-                        audio.play_sfx("combo.wav", volume=0.8)
+                        audio.play_sfx(
+                            "combo.wav",
+                            volume=min(1.0, 0.7 + 0.1 * (state.combo_count // 10)),
+                            priority=True,
+                        )
+                    # Shield earned (x25): a distinct beat so the player learns it.
+                    elif state.combo_shield and not shield_before:
+                        state.effects.add_popup(
+                            "SHIELD", word_obj.x, word_obj.row - 1,
+                            state.time_played_seconds, "combo",
+                        )
+                        audio.play_sfx("combo.wav", volume=0.7, priority=True)
 
                     # Update peak score rate
                     state.peak_score_rate = update_peak_score_rate(
@@ -329,13 +377,29 @@ def _process_input(
                     )
 
     elif result.rejected:
-        audio.play_sfx("typo.wav", volume=0.5)
+        audio.play_sfx("typo.wav", volume=0.4)
         # Update combo for typo
+        combo_before = state.combo_count
         state.combo_count, state.combo_shield, state.combo_typo_window = update_combo(
             state.combo_count, state.combo_shield, state.combo_typo_window,
             state.total_keystrokes,
             is_typo=True,
         )
+        # A real streak collapsing to zero gets a shatter beat (§4.2/§8.1).
+        if state.combo_count == 0 and combo_before >= levels.COMBO_SHATTER_MIN:
+            _combo_shatter(state, audio, play_sound=True)
+
+
+def _combo_shatter(state: GameState, audio: Any, *, play_sound: bool) -> None:
+    """Fire the combo-break beat when a meaningful streak collapses to zero.
+
+    A brief banner (rendered from effects.combo_break) plus, optionally, a
+    distinct streak-lost sound — so losing a long combo has weight instead of
+    vanishing silently.
+    """
+    state.effects.combo_break = state.time_played_seconds
+    if play_sound:
+        audio.play_sfx("life_lost.wav", volume=0.5, priority=True)
 
 
 def _observe_secret(state: GameState, key: str, audio: Any) -> None:
