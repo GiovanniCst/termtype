@@ -178,3 +178,12 @@ In-game credits (author, website, and these attributions) are available from the
 
 The MIT License covers the project's own source code; the bundled texts and audio are
 in the public domain / CC0 as noted above.
+
+## A note from the author
+
+termType is a solo project by **Giovanni J. Costantini** — more about my work at
+[costantini.pw](https://costantini.pw).
+
+I'm open to **CTO and senior engineering-leadership roles**, in software-product
+companies or corporate engineering organisations. If that sounds like a fit, I'd be
+glad to talk.
