@@ -218,6 +218,17 @@ def story_word_score(
     return bv * sb * am
 
 
+def in_order_bonus(flow: int) -> int:
+    """Small escalating bonus for clearing story words in reading order (§5.2).
+
+    flow is the count of consecutive in-order clears (1 = first). Capped tiny so
+    chasing order never outweighs saving an urgent word from drowning.
+    """
+    if flow <= 0:
+        return 0
+    return levels.STORY_IN_ORDER_BONUS * min(flow, levels.STORY_FLOW_CAP)
+
+
 def pace_chain_bonus(chain_len: int) -> int:
     """Escalating per-sentence pace-chain award (PLAN §5.2).
 

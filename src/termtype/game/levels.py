@@ -32,6 +32,11 @@ PLATEAU_SURGE_RAMP: float = 0.05  # speed increase per surge
 STORY_STOPWORD_WEIGHT: float = 0.25
 STORY_PACE_BONUS: int = 25        # base per-sentence pace-chain award
 STORY_PACE_CHAIN_CAP: int = 10    # escalation caps here
+# In-order "flow": a small escalating bonus for clearing the reading-order
+# frontier word. Kept tiny on purpose — chasing order must never tempt a player
+# to let an urgent word drown (a drown forfeits far more via the pace chain).
+STORY_IN_ORDER_BONUS: int = 2     # points per consecutive in-order clear
+STORY_FLOW_CAP: int = 5           # escalation caps here (max +10)
 
 # Story-mode side panel (HN skin): max width in columns of the right-hand panel;
 # the playfield gets the rest. engine.play_cols and the renderer divider both read

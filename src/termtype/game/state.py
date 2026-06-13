@@ -96,6 +96,8 @@ class GameState:
     # Per-sentence pace chain + chapter fluency (PLAN §5.2)
     pace_chain: int = 0                                     # consecutive sentences cleared on pace
     max_pace_chain: int = 0
+    story_flow: int = 0                                     # consecutive in-order word clears
+    max_story_flow: int = 0
     sentences_completed: int = 0
     chapter_fluency: int = 0                                # set when the story completes
 
@@ -169,6 +171,7 @@ def advance(state: GameState, dt: float) -> GameState:
             )
             if state.mode == "story":
                 state.pace_chain = 0  # a drowned word breaks the pace chain (§5.2)
+                state.story_flow = 0  # …and the in-order flow streak
             if state.zen:
                 # Zen: no life lost; the word auto-completes into the prose,
                 # scores 0, and breaks the combo (PLAN §5.2).

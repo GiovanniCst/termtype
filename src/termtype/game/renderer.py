@@ -176,6 +176,10 @@ class Renderer:
         for i, word in enumerate(state.words):
             self._render_urgency_gutter(word, water_row, w, dx)
 
+        # Story: chevron marking the reading-order "next" word
+        if state.mode == "story" and state.story_words:
+            self._render_story_cursor(state, w, water_row, dx)
+
         # Story presentation: HN page on the right, or the bottom ribbon
         if state.mode == "story" and state.story_skin == "hn":
             self._render_hn_panel(state, h, w)
@@ -523,6 +527,29 @@ class Renderer:
                 self.screen.print_at(char, cx, row, colour=colour, attr=attr)
             except Exception:
                 pass
+
+    def _render_story_cursor(self, state: GameState, w: int, water_row: int, dx: int) -> None:
+        """Mark the reading-order frontier word with a chevron (story mode).
+
+        The frontier is state.words[0] (FIFO spawn order). Drawn one column left
+        of the urgency gutter in bold cyan — a channel orthogonal to the
+        red/yellow urgency ramp, so a red-zone frontier word stays red while the
+        chevron still flags it. Hidden once the frontier is locked (the >word<
+        brackets then show focus). Glyph carries it in mono, and it's always on
+        under reduced motion (unlike the cosmetic fin, which is suppressed).
+        """
+        if not state.words or state.locked_word_index == 0:
+            return
+        word = state.words[0]
+        row = int(round(word.row))
+        x = int(round(word.x)) - 3 + dx
+        if x < 0 or row < 1 or row >= water_row:
+            return
+        glyph = ">" if self.ascii_mode else "»"
+        try:
+            self.screen.print_at(glyph, x, row, colour=3, attr=1)
+        except Exception:
+            pass
 
     def _render_urgency_gutter(self, word: FallingWord, water_row: int, screen_width: int, dx: int = 0) -> None:
         """Render the urgency gutter to the left of the word."""

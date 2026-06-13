@@ -17,7 +17,7 @@ from .word_matcher import process_keystroke
 from .eggs import feed_secret
 from .scoring import (
     word_score, story_word_score, pace_chain_bonus, chapter_fluency_score,
-    update_combo, update_peak_score_rate,
+    in_order_bonus, update_combo, update_peak_score_rate,
 )
 from .renderer import Renderer
 from .hud import render_hud
@@ -238,6 +238,9 @@ def _process_input(
                         break
 
                 if completed_idx is not None:
+                    # Index 0 is the reading-order frontier (FIFO spawn order),
+                    # so clearing it in story mode counts as "in order".
+                    in_order = completed_idx == 0
                     word_obj = state.words.pop(completed_idx)
                     # Fix locked_word_index after removal
                     if state.locked_word_index is not None:
@@ -275,6 +278,14 @@ def _process_input(
                             is_stopword=is_stop,
                         ))
                         state.story_words_done += 1
+                        # In-order flow: clearing the frontier word builds a
+                        # small escalating bonus; skipping ahead resets it.
+                        if in_order:
+                            state.story_flow += 1
+                            state.max_story_flow = max(state.max_story_flow, state.story_flow)
+                            score += in_order_bonus(state.story_flow)
+                        else:
+                            state.story_flow = 0
                         # Per-sentence pace chain (§5.2): award an escalating
                         # bonus for each sentence cleared without a drown.
                         prev_done = state.sentences_completed
