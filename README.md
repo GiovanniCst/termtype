@@ -1,12 +1,8 @@
 <div align="center">
-<pre>
- _______ ______ _____  __  __ _________     _______  ______ 
-|__   __|  ____|  __ \|  \/  |__   __\ \   / /  __ \|  ____|
-   | |  | |__  | |__) | \  / |  | |   \ \_/ /| |__) | |__   
-   | |  |  __| |  _  /| |\/| |  | |    \   / |  ___/|  __|  
-   | |  | |____| | \ \| |  | |  | |     | |  | |    | |____ 
-   |_|  |______|_|  \_\_|  |_|  |_|     |_|  |_|    |______|
-</pre>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/title-dark.svg">
+    <img src="assets/title.svg" alt="termType" width="560">
+  </picture>
 </div>
 
 A terminal typing game where words fall like Space Invaders — type them before they
